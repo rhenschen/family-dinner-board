@@ -212,6 +212,16 @@ input:checked+.tsl::before{transform:translateX(20px)}
 .iaddbtn{background:var(--b);color:#fdf3e3;border:none;border-radius:var(--rs);padding:8px 12px;cursor:pointer;font-size:.82rem;white-space:nowrap;font-family:'Lato',sans-serif;min-height:40px}
 .setup{background:#fff8e6;border:1px solid #e6c84e;border-radius:var(--rs);padding:.85rem 1rem;margin-bottom:.9rem;font-size:.8rem;color:#7a5a00;line-height:1.5}
 .sdis{float:right;cursor:pointer;text-decoration:underline;font-size:.75rem;margin-left:8px;background:none;border:none;color:#7a5a00;font-family:'Lato',sans-serif}
+.editbtn{background:none;border:1px solid var(--cb);border-radius:var(--rs);padding:4px 10px;cursor:pointer;font-size:.72rem;color:var(--bm);font-family:'Lato',sans-serif;min-height:32px;white-space:nowrap}
+.editbtn:active{background:var(--ch);color:var(--b)}
+.edit-row{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.edit-row input{width:100%;padding:8px 10px;border:1.5px solid var(--g);border-radius:var(--rs);font-size:.85rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br)}
+.edit-row input:focus{outline:none;border-color:var(--b)}
+.edit-acts{display:flex;gap:6px;margin-top:4px}
+.savebtn{background:var(--b);color:#fdf3e3;border:none;border-radius:var(--rs);padding:7px 14px;cursor:pointer;font-size:.78rem;font-family:'Lato',sans-serif;font-weight:700;min-height:34px}
+.savebtn:active{background:var(--br)}
+.canbtn{background:var(--cbg);color:var(--mt);border:1px solid var(--cb);border-radius:var(--rs);padding:7px 14px;cursor:pointer;font-size:.78rem;font-family:'Lato',sans-serif;min-height:34px}
+.canbtn:active{background:#f0d9c0;color:var(--b)}
 </style>
 </head>
 <body>
@@ -708,11 +718,19 @@ function rAdm(){
   var ml=document.getElementById('meal-list');ml.innerHTML='';
   meals.forEach(function(m){
     var ig=ings[m.id]||[];
+    var isEditing=editingMealId===m.id;
+    var nameDisplay=isEditing
+      ?'<div class="edit-row">'
+        +'<input id="edit-name-'+m.id+'" value="'+m.name.replace(/"/g,'&quot;')+'" placeholder="Meal name..."/>'
+        +'<input id="edit-desc-'+m.id+'" value="'+(m.desc||'').replace(/"/g,'&quot;')+'" placeholder="Description..."/>'
+        +'<div class="edit-acts"><button class="savebtn" onclick="saveMealEdit('+m.id+')">Save</button><button class="canbtn" onclick="cancelMealEdit()">Cancel</button></div>'
+        +'</div>'
+      :'<div class="mrname">'+m.name+'</div>'
+        +(m.desc?'<div class="mrsub">'+m.desc+'</div>':'')
+        +(m.link?'<div class="mrsub" style="color:var(--g)">\u2197 '+dom(m.link)+'</div>':'');
     ml.innerHTML+='<div class="mr"><div class="mrhdr"><div>'
-      +'<div class="mrname">'+m.name+'</div>'
-      +(m.desc?'<div class="mrsub">'+m.desc+'</div>':'')
-      +(m.link?'<div class="mrsub" style="color:var(--g)">\u2197 '+dom(m.link)+'</div>':'')
-      +'</div><button class="delbtn" onclick="delMeal('+m.id+')">\u2715</button></div>'
+      +nameDisplay
+      +'</div><div style="display:flex;gap:6px;align-items:flex-start">'+(isEditing?'':'<button class="editbtn" onclick="startMealEdit('+m.id+')">&#9998; Edit</button>')+'<button class="delbtn" onclick="delMeal('+m.id+')">\u2715</button></div></div>'
       +'<div class="ied"><div class="iedt">Grocery list ('+ig.length+')</div>'+(m.link?'<button class="pullbtn" id="pull-'+m.id+'" onclick="pullIngredients('+m.id+','+JSON.stringify(m.link)+')">&#8659; Pull ingredients from recipe link</button>':'')
       +'<div id="il-'+m.id+'">'+(ig.map(function(x,i){return'<div class="ir"><span class="irn">'+x.n+'</span><span class="irq">'+(x.q||'')+'</span><button class="delbtn" onclick="delIng('+m.id+','+i+')">\u2715</button></div>';}).join('')||'<div style="font-size:.75rem;color:var(--mt);padding:3px 0;font-style:italic">No ingredients yet</div>')+'</div>'
       +'<div class="iadd"><input class="iinp" id="in-'+m.id+'" placeholder="Ingredient..."/>'
@@ -779,6 +797,22 @@ function rAdm(){
 }
 
 // ── MEAL / FAM / DAY ADMIN ──
+var editingMealId=null;
+
+function startMealEdit(mid){editingMealId=mid;rAdm();}
+function cancelMealEdit(){editingMealId=null;rAdm();}
+function saveMealEdit(mid){
+  var m=meals.find(function(x){return x.id===mid;});if(!m)return;
+  var nameEl=document.getElementById('edit-name-'+mid);
+  var descEl=document.getElementById('edit-desc-'+mid);
+  var newName=nameEl?nameEl.value.trim():'';
+  var newDesc=descEl?descEl.value.trim():'';
+  if(!newName){nameEl.style.borderColor='#c8400a';return;}
+  m.name=newName;
+  m.desc=newDesc;
+  editingMealId=null;
+  saveAll();rAll();
+}
 
 function pullIngredients(mid, url) {
   var btn = document.getElementById('pull-'+mid);
