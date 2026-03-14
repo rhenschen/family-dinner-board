@@ -713,7 +713,7 @@ function rAdm(){
       +(m.desc?'<div class="mrsub">'+m.desc+'</div>':'')
       +(m.link?'<div class="mrsub" style="color:var(--g)">\u2197 '+dom(m.link)+'</div>':'')
       +'</div><button class="delbtn" onclick="delMeal('+m.id+')">\u2715</button></div>'
-      +'<div class="ied"><div class="iedt">Grocery list ('+ig.length+')</div>'+(m.link?'<button class="pullbtn" id="pull-'+m.id+'" onclick="pullIngredients('+m.id+',\'' +m.link+ '\')">&#8659; Pull ingredients from recipe link</button>':'')
+      +'<div class="ied"><div class="iedt">Grocery list ('+ig.length+')</div>'+(m.link?'<button class="pullbtn" id="pull-'+m.id+'" onclick="pullIngredients('+m.id+','+JSON.stringify(m.link)+')">&#8659; Pull ingredients from recipe link</button>':'')
       +'<div id="il-'+m.id+'">'+(ig.map(function(x,i){return'<div class="ir"><span class="irn">'+x.n+'</span><span class="irq">'+(x.q||'')+'</span><button class="delbtn" onclick="delIng('+m.id+','+i+')">\u2715</button></div>';}).join('')||'<div style="font-size:.75rem;color:var(--mt);padding:3px 0;font-style:italic">No ingredients yet</div>')+'</div>'
       +'<div class="iadd"><input class="iinp" id="in-'+m.id+'" placeholder="Ingredient..."/>'
       +'<div class="ir2"><input class="iqinp" id="iq-'+m.id+'" placeholder="Qty..."/>'
