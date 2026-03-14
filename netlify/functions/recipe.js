@@ -17,36 +17,31 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Try to fetch the recipe page with browser-like headers
-    let pageText = '';
-    try {
-      const page = await axios.get(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-        },
-        timeout: 10000,
-        maxRedirects: 5,
-      });
-      pageText = page.data.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 12000);
-    } catch (fetchErr) {
-      // Page fetch failed — we'll ask Claude to work from the URL alone
-      pageText = '';
-    }
+    // Extract the recipe name from the URL path instead of scraping the page.
+    // Most recipe sites encode the dish name in the URL slug, e.g.:
+    //   allrecipes.com/recipe/12345/chicken-parmesan/
+    //   simplyrecipes.com/chicken-tikka-masala-recipe/
+    // This avoids 403/402 blocks from recipe sites that reject server-side fetches.
+    const recipeName = extractRecipeNameFromUrl(url);
 
-    // Build the prompt depending on whether we got page content
-    let prompt;
-    if (pageText.length > 100) {
-      prompt = `Extract all ingredients from this recipe page. Return ONLY a JSON array of objects with "n" (ingredient name) and "q" (quantity with unit) fields. Example: [{"n":"flour","q":"2 cups"},{"n":"salt","q":"1 tsp"}]. No other text.\n\n${pageText}`;
-    } else {
-      prompt = `I have a recipe at this URL: ${url}\nBased on the recipe name/URL, identify the dish and list its typical ingredients. Return ONLY a JSON array of objects with "n" (ingredient name) and "q" (quantity with unit) fields. Example: [{"n":"flour","q":"2 cups"},{"n":"salt","q":"1 tsp"}]. No other text.`;
-    }
+    const prompt = `You are a recipe ingredient expert. A user wants the ingredient list for a recipe.
 
-    // Call Claude via Netlify AI Gateway (uses ANTHROPIC_BASE_URL)
+Recipe URL: ${url}
+${recipeName ? `Recipe name (from URL): ${recipeName}` : ''}
+
+Identify the exact recipe from the URL and recipe name. Then provide the COMPLETE ingredient list with precise quantities, as a home cook would need to shop for this dish (typically serves 4-6).
+
+Return ONLY a valid JSON array of objects. Each object must have:
+- "n": ingredient name (e.g. "chicken breast", "olive oil", "garlic cloves")
+- "q": quantity with unit (e.g. "2 lbs", "3 tbsp", "4 cloves")
+
+Example format: [{"n":"chicken breast","q":"2 lbs"},{"n":"olive oil","q":"2 tbsp"}]
+
+Return ONLY the JSON array, no other text, no markdown, no explanation.`;
+
     const response = await axios.post(baseUrl + 'v1/messages', {
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
     }, {
       headers: {
@@ -60,16 +55,22 @@ exports.handler = async (event) => {
     const content = response.data.content[0].text.trim();
     // Parse the JSON array from Claude's response
     const match = content.match(/\[[\s\S]*\]/);
-    const parsed = match ? JSON.parse(match[0]) : [];
+    if (!match) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ ingredients: [] }),
+      };
+    }
+
+    const parsed = JSON.parse(match[0]);
 
     // Normalize: ensure every element is {n, q} as the frontend expects
     const ingredients = parsed.map((item) => {
       if (typeof item === 'string') {
-        const m = item.match(/^([\d\u00BC-\u00BE\u2150-\u215E\/.\s-]+\s*\w+)\s+(.+)$/);
-        return m ? { n: m[2].trim(), q: m[1].trim() } : { n: item, q: '' };
+        return { n: item, q: '' };
       }
-      return { n: item.n || '', q: item.q || '' };
-    });
+      return { n: item.n || item.name || '', q: item.q || item.quantity || item.amount || '' };
+    }).filter((item) => item.n);
 
     return {
       statusCode: 200,
@@ -82,3 +83,27 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// Pull the human-readable recipe name out of a URL slug
+function extractRecipeNameFromUrl(url) {
+  try {
+    const pathname = new URL(url).pathname;
+    // Remove leading/trailing slashes, split on slashes
+    const segments = pathname.replace(/^\/|\/$/g, '').split('/');
+    // Find the best slug — usually the longest segment with dashes (the recipe title)
+    let best = '';
+    for (const seg of segments) {
+      // Skip purely numeric segments (IDs) and very short ones
+      if (/^\d+$/.test(seg) || seg.length < 3) continue;
+      // Prefer longer, hyphenated segments (recipe names)
+      if (seg.length > best.length) best = seg;
+    }
+    // Convert slug to readable name: "chicken-parmesan-recipe" → "chicken parmesan"
+    return best
+      .replace(/-recipe$/i, '')
+      .replace(/[-_]/g, ' ')
+      .trim();
+  } catch {
+    return '';
+  }
+}
