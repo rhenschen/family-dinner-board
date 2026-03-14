@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#5c3d1e"/>
+<title>Family Dinner Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--br:#3d2608;--b:#5c3d1e;--bm:#8b6340;--g:#c8a96e;--cr:#fdf8f2;--cc:#fffdf8;--cb:#e6d5b8;--ch:#fdf3e3;--cbg:#f5f0e8;--mt:#9b7a54;--gb:#e8f5e9;--gt:#2e7d32;--gbd:#a5d6a7;--ob:#fff3e0;--ot:#e65100;--obd:#ffcc80;--wb:#004f9a;--r:10px;--rs:6px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--cr);font-family:'Lato',sans-serif;min-height:100vh;padding-bottom:calc(env(safe-area-inset-bottom,0px)+24px)}
+.hdr{text-align:center;padding:1.25rem 1rem 1rem;border-bottom:1px solid var(--g);background:var(--cr)}
+.hdr h1{font-family:'Playfair Display',serif;font-size:1.75rem;color:var(--b);letter-spacing:.5px;line-height:1.2}
+.hdr p{font-family:'Playfair Display',serif;font-style:italic;color:var(--bm);font-size:.88rem;margin-top:4px}
+.orn{color:var(--g);font-size:.8rem;letter-spacing:3px;margin-bottom:5px}
+.app{max-width:600px;margin:0 auto;padding:.85rem}
+.sbar{display:flex;align-items:center;gap:8px;justify-content:center;font-size:.72rem;color:var(--mt);margin-bottom:.9rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);flex-shrink:0;transition:background .3s}
+.dot.ok{background:#4caf50}
+.sv{font-size:.65rem;color:#4caf50;opacity:0;transition:opacity .3s;margin-left:4px}
+.sv.show{opacity:1}
+.ldg{text-align:center;padding:2.5rem 1rem;font-family:'Playfair Display',serif;font-style:italic;color:var(--mt);font-size:1rem}
+/* WHO */
+.who{background:var(--cc);border:1px solid var(--cb);border-radius:var(--r);padding:.85rem;margin-bottom:.85rem}
+.wlbl{font-size:.72rem;color:var(--mt);font-style:italic;margin-bottom:.5rem;display:block}
+.wchips{display:flex;gap:7px;flex-wrap:wrap}
+.wc{padding:8px 14px;border-radius:20px;border:1.5px solid var(--cb);background:var(--cbg);cursor:pointer;font-size:.9rem;color:var(--b);font-family:'Lato',sans-serif;min-height:42px;display:flex;align-items:center;transition:all .15s}
+.wc.on{background:var(--b);border-color:var(--b);color:#fdf3e3;font-weight:700}
+.wc.aw{opacity:.38;cursor:default;text-decoration:line-through}
+.awnote{font-size:.72rem;color:var(--g);font-style:italic;margin-top:.5rem;line-height:1.4}
+/* TABS — 14 days scrollable */
+.tab-wrap{margin-bottom:.9rem}
+.tab-row-label{font-size:.65rem;color:var(--mt);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;text-align:center}
+.tabs{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 70px;padding:7px 4px;border:1.5px solid var(--cb);border-radius:var(--rs);background:var(--cc);cursor:pointer;text-align:center;transition:all .15s}
+.tab.on{background:var(--b);border-color:var(--b)}
+.tab.off{background:var(--cbg);opacity:.55}
+.tab.past{opacity:.4}
+.td{font-size:.62rem;letter-spacing:.5px;text-transform:uppercase;color:var(--b);font-weight:700;display:block}
+.tdt{font-size:.78rem;color:var(--mt);display:block;margin-top:1px;font-weight:700}
+.tmo{font-size:.62rem;color:var(--mt);display:block;margin-top:1px}
+.tm{font-size:.6rem;color:var(--g);display:block;margin-top:2px}
+.tab.on .td,.tab.on .tdt,.tab.on .tmo{color:#fdf3e3}
+.tab.on .tm{color:var(--g)}
+.toff{font-size:.58rem;color:var(--mt);display:block;font-style:italic;margin-top:2px}
+.today-ind{font-size:.58rem;color:#c8400a;font-weight:700;display:block;letter-spacing:.5px}
+/* PANEL */
+.pnl{background:var(--cc);border:1px solid var(--cb);border-radius:var(--r);padding:1rem}
+.dhdr{margin-bottom:.9rem;padding-bottom:.75rem;border-bottom:1px solid #f0e6d0}
+.dhr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.dname{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--b)}
+.ttag{font-size:.62rem;color:var(--g);font-family:'Lato',sans-serif;letter-spacing:1px;vertical-align:middle;margin-left:5px}
+.dvc{font-size:.72rem;color:var(--mt);font-style:italic;white-space:nowrap;padding-top:3px}
+.astrip{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.pc{font-size:.68rem;padding:3px 8px;border-radius:10px;font-weight:700}
+.phome{background:var(--gb);color:var(--gt);border:1px solid var(--gbd)}
+.pwork{background:var(--ob);color:var(--ot);border:1px solid var(--obd);text-decoration:line-through;opacity:.7}
+.elbl{font-size:.72rem;color:var(--mt);margin-top:5px;font-style:italic;line-height:1.4}
+.wnames{color:var(--g);font-weight:700}
+.clov{text-align:center;padding:2.5rem 1rem;color:var(--mt);font-family:'Playfair Display',serif;font-style:italic;font-size:1rem}
+.nomeals{text-align:center;padding:1.5rem 1rem;color:var(--mt);font-family:'Playfair Display',serif;font-style:italic;font-size:.9rem;background:#fffbf3;border:1px dashed var(--cb);border-radius:var(--rs)}
+.stitle{font-family:'Playfair Display',serif;font-size:.78rem;color:var(--b);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:.8rem;display:flex;align-items:center;gap:8px}
+.stitle::before,.stitle::after{content:'';flex:1;height:1px;background:var(--cb)}
+/* MEALS */
+.meal{background:#fff;border:1.5px solid #ede3d0;border-radius:var(--rs);padding:.85rem;margin-bottom:.6rem}
+.mrow{display:flex;align-items:center;gap:10px}
+.minfo{flex:1;min-width:0}
+.mname{font-family:'Playfair Display',serif;font-size:1rem;color:var(--br);line-height:1.3}
+.mdesc{font-size:.78rem;color:var(--mt);margin-top:2px;font-style:italic;line-height:1.4}
+.mlink{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--g);margin-top:4px;text-decoration:none;border-bottom:1px dashed var(--cb)}
+.bw{height:4px;background:#f0e6d0;border-radius:2px;margin-top:6px;overflow:hidden}
+.bar{height:100%;background:var(--g);border-radius:2px;transition:width .35s}
+.vs{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.vc{font-size:1.05rem;font-weight:700;color:var(--b);min-width:22px;text-align:center}
+.vb{background:var(--ch);border:1.5px solid var(--g);border-radius:var(--rs);width:44px;height:44px;cursor:pointer;font-size:1.1rem;color:var(--b);display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.vb.vd{background:var(--g);color:#fff}
+.vb:disabled{opacity:.3;cursor:not-allowed;background:var(--cbg);border-color:var(--cb)}
+.wb{display:inline-block;background:var(--b);color:#fdf3e3;font-size:.58rem;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-left:6px;vertical-align:middle}
+.newb{display:inline-block;background:#c8400a;color:#fff;font-size:.58rem;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-left:4px;vertical-align:middle;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.vtags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.vtag{font-size:.68rem;padding:2px 8px;background:var(--ch);border:1px solid var(--cb);border-radius:8px;color:var(--bm)}
+.vtag.me{background:var(--b);border-color:var(--b);color:#fdf3e3}
+.novote{text-align:center;padding:1rem;font-family:'Playfair Display',serif;font-style:italic;color:var(--g);font-size:.9rem;background:#fffbf3;border:1px dashed var(--cb);border-radius:var(--rs);margin-bottom:.6rem}
+.workmsg{text-align:center;padding:.85rem;font-size:.85rem;color:var(--ot);background:var(--ob);border:1px solid var(--obd);border-radius:var(--rs);margin-bottom:.6rem;font-style:italic}
+.tot{text-align:center;font-size:.72rem;color:var(--mt);margin-top:.7rem;font-style:italic}
+/* GROCERY */
+.gbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:.75rem;background:var(--wb);color:#fff;border:none;border-radius:var(--rs);padding:13px 16px;cursor:pointer;font-size:.88rem;font-family:'Lato',sans-serif;font-weight:700;min-height:48px}
+.gbtn:active{background:#003d78}
+.gpnl{margin-top:.6rem;background:#f0f7ff;border:1px solid #b3d4f5;border-radius:var(--r);padding:1rem;display:none}
+.gpnl.open{display:block}
+.gph{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.gpt{font-family:'Playfair Display',serif;font-size:.95rem;color:#003d78}
+.gpc{cursor:pointer;font-size:.8rem;color:var(--wb);background:none;border:none;font-family:'Lato',sans-serif;text-decoration:underline;padding:4px 0;min-height:36px}
+.gsub{font-size:.73rem;color:#1565c0;font-style:italic;margin-bottom:.75rem;line-height:1.4}
+.irow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #dceeff}
+.irow:last-child{border-bottom:none}
+.inm{flex:1;font-size:.88rem;color:#1a1a2e}
+.iqt{font-size:.75rem;color:#5b7fa6;min-width:55px;text-align:right}
+.wlnk{display:inline-flex;align-items:center;gap:5px;background:var(--wb);color:#fff;text-decoration:none;border-radius:var(--rs);padding:7px 12px;font-size:.75rem;font-weight:700;white-space:nowrap;flex-shrink:0;min-height:36px}
+.wlnk:active{background:#003d78}
+.noing{font-size:.82rem;color:#5b7fa6;font-style:italic;text-align:center;padding:.75rem 0}
+.gtip{font-size:.7rem;color:#5b7fa6;font-style:italic;margin-top:.65rem;text-align:center}
+/* REQUEST */
+.req-box{background:var(--cc);border:1.5px dashed #c8400a;border-radius:var(--r);padding:1rem;margin-top:1rem}
+.req-title{font-family:'Playfair Display',serif;font-size:.92rem;color:var(--br);margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+.req-title::before{content:'\2665';font-size:.8rem;color:#c8400a}
+/* SUGGEST */
+.sug-box{background:var(--cc);border:1.5px dashed var(--g);border-radius:var(--r);padding:1rem;margin-top:1rem}
+.sugt{font-family:'Playfair Display',serif;font-size:.92rem;color:var(--b);margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+.sugt::before{content:'\2726';font-size:.7rem;color:var(--g)}
+.field{margin-bottom:.6rem}
+.flbl{font-size:.7rem;color:var(--mt);font-style:italic;margin-bottom:4px;display:block}
+.fi{width:100%;padding:11px 12px;border:1.5px solid var(--cb);border-radius:var(--rs);font-size:.9rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br);-webkit-appearance:none;appearance:none}
+.fi:focus{outline:none;border-color:var(--g)}
+.fi.sm{font-size:.83rem;padding:9px 10px}
+.fbtn{width:100%;border:none;border-radius:var(--rs);padding:13px 16px;cursor:pointer;font-size:.92rem;font-family:'Lato',sans-serif;font-weight:700;min-height:48px;margin-top:4px}
+.fbtn.gold{background:var(--g);color:#fff}
+.fbtn.gold:active{background:var(--bm)}
+.fbtn.red{background:#c8400a;color:#fff}
+.fbtn.red:active{background:#a33209}
+.fst{font-size:.75rem;margin-top:7px;font-style:italic;min-height:18px;line-height:1.4}
+.fst.ok{color:var(--gt)}
+.fst.err{color:#a32d2d}
+.plist{margin-top:.65rem}
+.pi{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:.82rem;color:var(--b)}
+.pdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.pdot.g{background:var(--g)}
+.pdot.r{background:#c8400a}
+.pby{font-size:.7rem;color:var(--mt);white-space:nowrap;margin-left:auto;padding-left:6px}
+/* ADMIN */
+.atog{text-align:center;margin-top:1.25rem;padding:.5rem 0}
+.alnk{font-size:.8rem;color:var(--g);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:'Lato',sans-serif;padding:8px 16px;min-height:40px}
+.apnl{display:none;margin-top:.75rem;background:var(--cc);border:1px solid var(--cb);border-radius:var(--r);padding:1rem}
+.apnl.open{display:block}
+.apnl h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--b);margin-bottom:.85rem;text-align:center}
+.lockrow{display:flex;gap:8px;margin-bottom:.5rem}
+.pw{flex:1;padding:11px 12px;border:1.5px solid var(--cb);border-radius:var(--rs);font-size:.9rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br);-webkit-appearance:none}
+.pw:focus{outline:none;border-color:var(--g)}
+.ulbtn{background:var(--g);color:#fff;border:none;border-radius:var(--rs);padding:11px 16px;cursor:pointer;font-size:.88rem;font-family:'Lato',sans-serif;font-weight:700;white-space:nowrap;min-height:48px}
+.pwerr{font-size:.75rem;color:#a32d2d;text-align:center;margin-bottom:.5rem;display:none}
+.atabs{display:flex;gap:4px;margin-bottom:.85rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.atabs::-webkit-scrollbar{display:none}
+.atab{flex:0 0 auto;padding:8px 12px;border:1.5px solid var(--cb);border-radius:var(--rs);background:var(--cbg);cursor:pointer;font-size:.75rem;color:var(--bm);font-family:'Lato',sans-serif;white-space:nowrap;min-height:40px}
+.atab.on{background:var(--b);color:#fdf3e3;border-color:var(--b)}
+.asec{display:none}
+.asec.on{display:block}
+.albl{font-size:.7rem;color:var(--mt);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;margin-top:.75rem}
+.albl:first-child{margin-top:0}
+.ainp{width:100%;padding:10px 12px;border:1.5px solid var(--cb);border-radius:var(--rs);font-size:.88rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br);-webkit-appearance:none;margin-bottom:.5rem}
+.ainp:focus{outline:none;border-color:var(--g)}
+.ab{background:var(--b);color:#fdf3e3;border:none;border-radius:var(--rs);padding:10px 16px;cursor:pointer;font-size:.85rem;font-family:'Lato',sans-serif;font-weight:700;white-space:nowrap;min-height:44px}
+.ab:active{background:var(--br)}
+.ab.full{width:100%;margin-top:4px}
+.ab.sm{background:var(--cbg);color:var(--mt);border:1px solid var(--cb);padding:6px 12px;font-size:.78rem;min-height:36px}
+.ab.sm:active{background:#f0d9c0;color:var(--b)}
+.ab.ok{background:#2e7d32;color:#fff;border:none;padding:7px 14px;font-size:.8rem;min-height:38px}
+.ab.ok:active{background:#1b5e20}
+.delbtn{background:var(--cbg);border:1px solid var(--cb);border-radius:var(--rs);width:36px;height:36px;cursor:pointer;color:var(--mt);font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.delbtn:active{background:#f0d9c0;color:var(--b)}
+.ritem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5f0e8}
+.ritem:last-child{border-bottom:none}
+.rlbl{flex:1;font-size:.88rem;color:var(--br);line-height:1.3}
+.rsub{font-size:.73rem;color:var(--mt)}
+.tsw{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0}
+.tsw input{opacity:0;width:0;height:0}
+.tsl{position:absolute;inset:0;background:var(--cb);border-radius:12px;transition:.2s}
+.tsl::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.tsl{background:var(--b)}
+input:checked+.tsl::before{transform:translateX(20px)}
+.rall{width:100%;margin-top:.6rem;background:var(--cbg);border:1px solid var(--cb);border-radius:var(--rs);padding:10px;cursor:pointer;font-size:.82rem;color:var(--mt);font-family:'Lato',sans-serif;min-height:44px}
+.rall:active{background:#f0d9c0;color:var(--b)}
+.dbnote{font-size:.7rem;color:var(--mt);text-align:center;margin-top:5px;font-style:italic}
+.badge{display:inline-block;background:var(--g);color:#fff;border-radius:8px;font-size:.62rem;padding:1px 6px;margin-left:4px;font-weight:700}
+.badge.r{background:#c8400a}
+.dmp-meal{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f0e8}
+.dmp-meal:last-child{border-bottom:none}
+.dmp-name{flex:1;font-size:.85rem;color:var(--br);font-family:'Playfair Display',serif}
+.dmp-ctrl{display:flex;align-items:center;gap:6px}
+.newtag{padding:5px 8px;background:#fff0e8;border:1px solid #e89060;color:#c8400a;border-radius:3px;cursor:pointer;font-family:'Lato',sans-serif;font-size:.72rem;white-space:nowrap;min-height:32px;display:flex;align-items:center}
+.newtag.on{background:#c8400a;color:#fff;border-color:#c8400a}
+.sr{padding:9px 0;border-bottom:1px solid #f5f0e8}
+.sr:last-child{border-bottom:none}
+.srname{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--br)}
+.srmeta{font-size:.73rem;color:var(--mt);margin-top:2px;line-height:1.4}
+.srlink{font-size:.73rem;color:var(--g);word-break:break-all;margin-top:2px}
+.sracts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.mr{padding:8px 0;border-bottom:1px solid #f5f0e8}
+.mr:last-child{border-bottom:none}
+.mrhdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.mrname{font-family:'Playfair Display',serif;font-size:.9rem;color:var(--br)}
+.mrsub{font-size:.73rem;color:var(--mt);margin-top:2px}
+.ied{margin-top:8px;background:#f9f6f0;border:1px solid var(--cb);border-radius:var(--rs);padding:8px 10px}
+.pullbtn{width:100%;margin-bottom:8px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:var(--rs);padding:7px 10px;cursor:pointer;font-size:.78rem;color:#2e7d32;font-family:'Lato',sans-serif;min-height:36px}
+.pullbtn:active{background:#c8e6c9}
+.pullbtn.loading{opacity:.6;cursor:not-allowed}
+.iedt{font-size:.7rem;color:var(--mt);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.ir{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f0e6d0}
+.ir:last-child{border-bottom:none}
+.irn{flex:1;font-size:.83rem;color:var(--br)}
+.irq{font-size:.75rem;color:var(--mt);min-width:55px;text-align:right}
+.iadd{display:flex;flex-direction:column;gap:5px;margin-top:7px}
+.ir2{display:flex;gap:5px}
+.iinp{flex:1;padding:8px 10px;border:1.5px solid var(--cb);border-radius:var(--rs);font-size:.85rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br);-webkit-appearance:none}
+.iinp:focus{outline:none;border-color:var(--g)}
+.iqinp{width:80px;flex-shrink:0;padding:8px 8px;border:1.5px solid var(--cb);border-radius:var(--rs);font-size:.85rem;font-family:'Lato',sans-serif;background:#fff;color:var(--br);-webkit-appearance:none}
+.iqinp:focus{outline:none;border-color:var(--g)}
+.iaddbtn{background:var(--b);color:#fdf3e3;border:none;border-radius:var(--rs);padding:8px 12px;cursor:pointer;font-size:.82rem;white-space:nowrap;font-family:'Lato',sans-serif;min-height:40px}
+.setup{background:#fff8e6;border:1px solid #e6c84e;border-radius:var(--rs);padding:.85rem 1rem;margin-bottom:.9rem;font-size:.8rem;color:#7a5a00;line-height:1.5}
+.sdis{float:right;cursor:pointer;text-decoration:underline;font-size:.75rem;margin-left:8px;background:none;border:none;color:#7a5a00;font-family:'Lato',sans-serif}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="orn">&#8212; &#10022; &#8212;</div>
+  <h1>Family Dinner Board</h1>
+  <p>Vote for what you'd like over the next 14 days</p>
+</div>
+<div class="app">
+  <div class="setup" id="setup">
+    <button class="sdis" onclick="document.getElementById('setup').style.display='none'">Dismiss</button>
+    <strong>First time?</strong> Open <strong>Kitchen Management</strong> (password: <code>dinner123</code>) to set up meals, assign per-day menus, and manage your family.
+  </div>
+  <div class="sbar">
+    <div class="dot" id="dot"></div>
+    <span id="stxt">Loading...</span>
+    <span class="sv" id="sv">&#10003; Saved</span>
+  </div>
+  <div id="ldg" class="ldg">Loading your dinner board...</div>
+  <div id="app" style="display:none">
+    <div class="who">
+      <span class="wlbl">Who are you?</span>
+      <div class="wchips" id="wchips"></div>
+      <div class="awnote" id="awnote" style="display:none"></div>
+    </div>
+    <div class="tab-wrap">
+      <div class="tab-row-label">Scroll to see all 14 days &#8594;</div>
+      <div class="tabs" id="tabs"></div>
+    </div>
+    <div id="daycontent"></div>
+    <div class="req-box">
+      <div class="req-title">Request a meal for the coming week</div>
+      <div class="field"><label class="flbl">What are you craving?</label><input class="fi" id="req-name" placeholder="e.g. Spaghetti Bolognese"/></div>
+      <div class="field"><label class="flbl">Any details? (optional)</label><input class="fi sm" id="req-note" placeholder="e.g. The one with the thick sauce!"/></div>
+      <button class="fbtn red" onclick="submitReq()">Request this meal &#9829;</button>
+      <div class="fst" id="req-st"></div>
+      <div class="plist" id="req-pend"></div>
+    </div>
+    <div class="sug-box">
+      <div class="sugt">Suggest a new meal for the menu</div>
+      <div class="field"><label class="flbl">Meal name</label><input class="fi" id="sug-name" placeholder="e.g. Chicken Parmesan"/></div>
+      <div class="field"><label class="flbl">Short description (optional)</label><input class="fi sm" id="sug-desc" placeholder="e.g. Crispy chicken with marinara"/></div>
+      <div class="field"><label class="flbl">Recipe link (optional)</label><input class="fi sm" id="sug-link" placeholder="https://www.allrecipes.com/..."/></div>
+      <button class="fbtn gold" onclick="submitSug()">Send to the kitchen &#10022;</button>
+      <div class="fst" id="sug-st"></div>
+      <div class="plist" id="sug-pend"></div>
+    </div>
+    <div class="atog"><button class="alnk" onclick="togAdm()">Kitchen management</button></div>
+    <div class="apnl" id="apnl">
+      <h3>Kitchen Management</h3>
+      <div id="lsec">
+        <div class="lockrow">
+          <input class="pw" type="password" id="pw" placeholder="Password..."/>
+          <button class="ulbtn" onclick="doUnlock()">Unlock</button>
+        </div>
+        <div class="pwerr" id="pwerr">Incorrect password.</div>
+      </div>
+      <div id="msec" style="display:none">
+        <div class="atabs">
+          <div class="atab on" onclick="aTab('menu')">Menu</div>
+          <div class="atab" onclick="aTab('daymenu')">Day Menus</div>
+          <div class="atab" onclick="aTab('reqs')">Requests <span class="badge r" id="rbadge" style="display:none">0</span></div>
+          <div class="atab" onclick="aTab('sugs')">Suggestions <span class="badge" id="sbadge" style="display:none">0</span></div>
+          <div class="atab" onclick="aTab('fam')">Family</div>
+          <div class="atab" onclick="aTab('sch')">Schedule</div>
+          <div class="atab" onclick="aTab('vot')">Votes</div>
+        </div>
+        <div class="asec on" id="asec-menu">
+          <div class="albl">Master meal list</div>
+          <div id="meal-list"></div>
+          <div class="albl">Add a meal</div>
+          <input class="ainp" id="nn" placeholder="Meal name..."/>
+          <input class="ainp" id="nd" placeholder="Description..."/>
+          <input class="ainp" id="nl" placeholder="Recipe link (optional)"/>
+          <button class="ab full" onclick="addMeal()">Add Meal</button>
+          <div class="dbnote">Saves permanently to this device</div>
+        </div>
+        <div class="asec" id="asec-daymenu">
+          <div class="albl">Select meals for each day &mdash; toggle on/off, mark as New</div>
+          <div id="day-menu-ed"></div>
+        </div>
+        <div class="asec" id="asec-reqs">
+          <div class="albl">Meal requests</div>
+          <div id="req-list"></div>
+        </div>
+        <div class="asec" id="asec-sugs">
+          <div class="albl">Pending menu suggestions</div>
+          <div id="sug-list"></div>
+        </div>
+        <div class="asec" id="asec-fam">
+          <div class="albl">Family members</div>
+          <div id="fam-list"></div>
+          <div class="albl">Add a member</div>
+          <input class="ainp" id="fn" placeholder="Name (e.g. Amber)"/>
+          <input class="ainp" id="fk" placeholder="Work keyword (e.g. Amber work)"/>
+          <button class="ab full" onclick="addFam()">Add Member</button>
+        </div>
+        <div class="asec" id="asec-sch">
+          <div class="albl">Toggle cooking days on / off</div>
+          <div id="sch-list"></div>
+        </div>
+        <div class="asec" id="asec-vot">
+          <div class="albl">Reset votes by day</div>
+          <div id="vot-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+var ADMIN_PW = 'dinner123'; // Change before sharing!
+var WS = 19, WE = 24;       // Work window: 7pm–midnight
+var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var DAYSFULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── BUILD 14-DAY WINDOW starting today ──
+var today = new Date();
+today.setHours(0,0,0,0);
+
+function buildWindow() {
+  var days = [];
+  for (var i = 0; i < 14; i++) {
+    var d = new Date(today);
+    d.setDate(today.getDate() + i);
+    var iso = d.toISOString().slice(0,10); // YYYY-MM-DD — permanent key
+    days.push({
+      iso: iso,
+      dayName: DAYSFULL[d.getDay()],
+      dayShort: DAYS[d.getDay()],
+      date: d.getDate(),
+      month: MONTHS[d.getMonth()],
+      isToday: i === 0,
+      isTomorrow: i === 1,
+      dayOfWeek: d.getDay()
+    });
+  }
+  return days;
+}
+var WD = buildWindow();
+
+// ── DEFAULTS ──
+var DM = [
+  {id:1,name:"Mama's Lasagna",desc:"Layers of love, ricotta & meat sauce",link:''},
+  {id:2,name:"Grilled Chicken & Veggies",desc:"Herbed chicken with roasted vegetables",link:''},
+  {id:3,name:"Taco Night",desc:"Build-your-own with all the fixings",link:''},
+  {id:4,name:"Homemade Mac & Cheese",desc:"Extra creamy, baked golden on top",link:''},
+  {id:5,name:"Beef Pot Roast",desc:"Slow-cooked with potatoes and carrots",link:''}
+];
+var DF = [
+  {id:1,name:"Aaliyah",kw:"Aaliyah - Work"},
+  {id:3,name:"Carly",kw:"Carly work"},{id:4,name:"Jackson",kw:"Jack work / Jackson work"},
+  {id:5,name:"Reese",kw:"Reese work"},{id:6,name:"Tyler",kw:"Tyler work"},
+  {id:7,name:"Amber",kw:"Amber work"},{id:8,name:"Ace",kw:"Ace work"}
+];
+var DI = {
+  "Mama's Lasagna":[{n:"Ground beef",q:"1 lb"},{n:"Lasagna noodles",q:"12 sheets"},{n:"Ricotta cheese",q:"15 oz"},{n:"Mozzarella cheese",q:"2 cups"},{n:"Marinara sauce",q:"24 oz"},{n:"Eggs",q:"2"},{n:"Parmesan cheese",q:"1/2 cup"},{n:"Garlic",q:"4 cloves"},{n:"Italian seasoning",q:"1 tbsp"}],
+  "Grilled Chicken & Veggies":[{n:"Chicken breasts",q:"4"},{n:"Zucchini",q:"2"},{n:"Bell peppers",q:"3"},{n:"Olive oil",q:"1/4 cup"},{n:"Lemon",q:"1"},{n:"Garlic powder",q:"1 tsp"},{n:"Italian seasoning",q:"1 tsp"}],
+  "Taco Night":[{n:"Ground beef",q:"1.5 lb"},{n:"Taco shells",q:"12"},{n:"Taco seasoning",q:"1 packet"},{n:"Shredded cheese",q:"2 cups"},{n:"Lettuce",q:"1 head"},{n:"Tomatoes",q:"2"},{n:"Sour cream",q:"8 oz"},{n:"Salsa",q:"16 oz"},{n:"Avocados",q:"2"}],
+  "Homemade Mac & Cheese":[{n:"Elbow macaroni",q:"1 lb"},{n:"Butter",q:"4 tbsp"},{n:"Flour",q:"1/4 cup"},{n:"Milk",q:"2 cups"},{n:"Sharp cheddar",q:"3 cups"},{n:"Gruyere cheese",q:"1 cup"},{n:"Breadcrumbs",q:"1/2 cup"}],
+  "Beef Pot Roast":[{n:"Chuck roast",q:"3-4 lb"},{n:"Potatoes",q:"1.5 lb"},{n:"Carrots",q:"1 lb"},{n:"Onion",q:"1 large"},{n:"Beef broth",q:"2 cups"},{n:"Garlic",q:"4 cloves"},{n:"Rosemary",q:"2 sprigs"},{n:"Thyme",q:"2 sprigs"}]
+};
+
+// ── STATE ──
+// Data keyed by ISO date string (YYYY-MM-DD) — persists correctly across days
+var meals=[], fam=[], sugs=[], reqs=[], ings={};
+// dayData[iso] = {open, away[], votes:{mealId:{voters:[]}}}
+// dayMenus[iso] = {mealIds:[], newMealIds:[]}
+var dayData={}, dayMenus={};
+var nMeal=100, nFam=100, nSug=1, nReq=1;
+var aDay=WD[0].iso; // active day ISO key
+var cUser=null, adm=false, gDay=null;
+
+// ── STORAGE — keyed by ISO date so each date persists separately ──
+function sv(k,v){try{localStorage.setItem('dfb_'+k,JSON.stringify(v));}catch(e){}}
+function ld(k,d){try{var v=localStorage.getItem('dfb_'+k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
+
+function saveAll(){
+  sv('meals',{meals:meals,nMeal:nMeal});
+  sv('fam',{fam:fam,nFam:nFam});
+  sv('sugs',{sugs:sugs,nSug:nSug});
+  sv('reqs',{reqs:reqs,nReq:nReq});
+  sv('ings',ings);
+  sv('dayMenus',dayMenus);
+  // Save per-date vote+schedule data
+  WD.forEach(function(d){
+    if(dayData[d.iso]){
+      sv('day_'+d.iso,{open:dayData[d.iso].open,votes:dayData[d.iso].votes});
+    }
+  });
+  flash();
+}
+
+function loadAll(){
+  // Meals
+  var m=ld('meals',null);
+  if(m){meals=m.meals.map(function(x){return Object.assign({link:''},x);});nMeal=m.nMeal;}
+  else{meals=DM.map(function(x){return Object.assign({},x);});nMeal=10;}
+  // Family
+  var f=ld('fam',null);
+  if(f){fam=f.fam;nFam=f.nFam;}
+  else{fam=DF.map(function(x){return Object.assign({},x);});nFam=10;}
+  // Suggestions
+  var s=ld('sugs',null);
+  if(s){sugs=s.sugs.map(function(x){return Object.assign({link:''},x);});nSug=s.nSug;}
+  else{sugs=[];nSug=1;}
+  // Requests
+  var r=ld('reqs',null);
+  if(r){reqs=r.reqs;nReq=r.nReq;}
+  else{reqs=[];nReq=1;}
+  // Ingredients
+  ings=ld('ings',{});
+  meals.forEach(function(m){if(!ings[m.id]&&DI[m.name])ings[m.id]=DI[m.name].map(function(x){return Object.assign({},x);});});
+  // Day menus — keyed by ISO date
+  dayMenus=ld('dayMenus',{});
+  // Per-date data
+  WD.forEach(function(d){
+    // Init structure
+    dayData[d.iso]={open:true,away:[],votes:{}};
+    meals.forEach(function(m){dayData[d.iso].votes[m.id]={voters:[]};});
+    // Load saved data for this date
+    var saved=ld('day_'+d.iso,null);
+    if(saved){
+      dayData[d.iso].open=saved.open!==undefined?saved.open:true;
+      meals.forEach(function(m){dayData[d.iso].votes[m.id]=saved.votes&&saved.votes[m.id]?saved.votes[m.id]:{voters:[]};});
+    }
+    // Init day menu if missing
+    if(!dayMenus[d.iso]){
+      dayMenus[d.iso]={mealIds:meals.map(function(m){return m.id;}),newMealIds:[]};
+    } else {
+      meals.forEach(function(m){if(!dayMenus[d.iso].mealIds.includes(m.id))dayMenus[d.iso].mealIds.push(m.id);});
+      if(!dayMenus[d.iso].newMealIds)dayMenus[d.iso].newMealIds=[];
+    }
+  });
+  // Purge stale day storage (older than 20 days)
+  var cutoff=new Date(today);
+  cutoff.setDate(cutoff.getDate()-20);
+  for(var k in localStorage){
+    if(k.startsWith('dfb_day_')){
+      var dateStr=k.replace('dfb_day_','');
+      var dt=new Date(dateStr+'T00:00:00');
+      if(dt<cutoff){try{localStorage.removeItem(k);}catch(e){}}
+    }
+  }
+}
+
+function flash(){var e=document.getElementById('sv');e.classList.add('show');setTimeout(function(){e.classList.remove('show');},1500);}
+
+// ── HELPERS ──
+function cu(s){if(!s)return'';var t=s.trim();return t.startsWith('http')?t:'https://'+t;}
+function vu(s){if(!s||!s.trim())return false;try{var u=new URL(s.trim());return u.protocol==='http:'||u.protocol==='https:';}catch(e){return false;}}
+function dom(u){try{return new URL(u).hostname.replace('www.','');}catch(e){return'link';}}
+function wu(i){return'https://www.walmart.com/search?q='+encodeURIComponent(i);}
+function tvotes(iso){if(!dayData[iso])return 0;return Object.values(dayData[iso].votes).reduce(function(s,v){return s+v.voters.length;},0);}
+function home(iso){if(!dayData[iso])return fam;return fam.filter(function(m){return!dayData[iso].away.includes(m.id);});}
+function isAw(n,iso){var m=fam.find(function(x){return x.name===n;});if(!m)return false;return dayData[iso]&&dayData[iso].away.includes(m.id);}
+function dayMeals(iso){var dm=dayMenus[iso]||{mealIds:meals.map(function(m){return m.id;})};return meals.filter(function(m){return dm.mealIds.includes(m.id);});}
+function isNew(iso,mid){return((dayMenus[iso]&&dayMenus[iso].newMealIds)||[]).includes(mid);}
+function winner(iso){
+  var vis=dayMeals(iso);if(!vis.length)return null;
+  var top=Math.max.apply(null,vis.map(function(m){return(dayData[iso].votes[m.id]||{voters:[]}).voters.length;}).concat([0]));
+  if(!top)return null;
+  return vis.find(function(m){return(dayData[iso].votes[m.id]||{voters:[]}).voters.length===top;})||null;
+}
+function getDayInfo(iso){return WD.find(function(d){return d.iso===iso;});}
+
+// ── WHO BAR ──
+function rWho(){
+  var c=document.getElementById('wchips'),n=document.getElementById('awnote');
+  c.innerHTML='';
+  var aw=dayData[aDay]?dayData[aDay].away:[];
+  fam.forEach(function(m){
+    var ia=aw.includes(m.id),ia2=cUser===m.name;
+    c.innerHTML+='<button class="wc'+(ia2?' on':'')+(ia?' aw':'')+'" onclick="'+(ia?'':'setU(\''+m.name+'\')')+'">'+m.name+'</button>';
+  });
+  var an=fam.filter(function(m){return aw.includes(m.id);}).map(function(m){return m.name;});
+  if(an.length){n.style.display='block';n.textContent=an.join(', ')+(an.length===1?' is':' are')+' working 7pm\u2013midnight \u2014 excluded tonight';}
+  else n.style.display='none';
+}
+function setU(n){cUser=cUser===n?null:n;rWho();rDay();}
+
+// ── TABS (14 days) ──
+function rTabs(){
+  var e=document.getElementById('tabs');e.innerHTML='';
+  WD.forEach(function(d){
+    var x=dayData[d.iso]||{open:true};
+    var tv=tvotes(d.iso);
+    var hc=home(d.iso).length;
+    var isActive=d.iso===aDay;
+    var cls='tab'+(isActive?' on':'')+(!x.open?' off':'');
+    var todayTag=d.isToday?'<span class="today-ind">TODAY</span>':'';
+    var meta=x.open?'<span class="tm">'+tv+'/'+hc+'</span>':'<span class="toff">off</span>';
+    e.innerHTML+='<div class="'+cls+'" onclick="selDay(\''+d.iso+'\')">'
+      +todayTag
+      +'<span class="td">'+d.dayShort+'</span>'
+      +'<span class="tdt">'+d.date+'</span>'
+      +'<span class="tmo">'+d.month+'</span>'
+      +meta
+      +'</div>';
+  });
+  // Scroll active tab into view
+  setTimeout(function(){
+    var tabs=document.getElementById('tabs');
+    var active=tabs.querySelector('.tab.on');
+    if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  },50);
+}
+
+// ── DAY PANEL ──
+function rDay(){
+  var e=document.getElementById('daycontent');
+  var d=getDayInfo(aDay);
+  if(!d){e.innerHTML='';return;}
+  var x=dayData[aDay]||{open:true,away:[],votes:{}};
+  if(!x.open){
+    e.innerHTML='<div class="pnl"><div class="clov">No cooking on '+d.dayName+' '+d.month+' '+d.date+' \u2014 enjoy a night off!</div></div>';
+    return;
+  }
+  var dm=dayMeals(aDay);
+  var dmVoters=[];
+  dm.forEach(function(m){(x.votes[m.id]||{voters:[]}).voters.forEach(function(v){if(!dmVoters.includes(v))dmVoters.push(v);});});
+  var hm=home(aDay),notVoted=hm.filter(function(m){return!dmVoters.includes(m.name);});
+  var dmVotes=dm.reduce(function(s,m){return s+(x.votes[m.id]||{voters:[]}).voters.length;},0);
+  var maxV=Math.max.apply(null,dm.map(function(m){return(x.votes[m.id]||{voters:[]}).voters.length;}).concat([1]));
+  var top=Math.max.apply(null,dm.map(function(m){return(x.votes[m.id]||{voters:[]}).voters.length;}).concat([0]));
+  var ua=cUser&&isAw(cUser,aDay),win=winner(aDay);
+  var ch=fam.map(function(m){var a=x.away.includes(m.id);return'<span class="pc '+(a?'pwork':'phome')+'">'+m.name+(a?' \u2715':'')+'</span>';}).join('');
+  var wh=notVoted.length?'waiting on <span class="wnames">'+notVoted.map(function(m){return m.name;}).join(', ')+'</span>':'<span style="color:var(--gt)">everyone\'s in \u2713</span>';
+  var titleLabel=d.dayName+', '+d.month+' '+d.date;
+  var h='<div class="pnl">'
+    +'<div class="dhdr"><div class="dhr">'
+    +'<div class="dname">'+titleLabel+(d.isToday?' <span class="ttag">TODAY</span>':(d.isTomorrow?' <span class="ttag" style="color:#8b6340">TOMORROW</span>':''))+'</div>'
+    +'<div class="dvc">'+dmVotes+' vote'+(dmVotes!==1?'s':'')+'</div></div>'
+    +'<div class="astrip">'+ch+'</div>'
+    +'<div class="elbl">'+hm.length+' home &middot; '+dmVoters.length+' voted &middot; '+wh+'</div>'
+    +'</div>'
+    +'<div class="stitle"><span>Choose Your Dinner</span></div>';
+  if(!cUser)h+='<div class="novote">Tap your name above to cast your vote</div>';
+  else if(ua)h+='<div class="workmsg">'+cUser+' is working 7pm\u2013midnight \u2014 no vote needed!</div>';
+  if(dm.length===0){
+    h+='<div class="nomeals">No meals set for '+d.dayName+' '+d.month+' '+d.date+' yet \u2014 check back soon!</div>';
+  } else {
+    dm.forEach(function(m){
+      var mv=x.votes[m.id]||{voters:[]},my=cUser&&mv.voters.includes(cUser);
+      var iw=dmVotes>0&&mv.voters.length===top&&mv.voters.length>0,cv=cUser&&!ua;
+      var tags=mv.voters.map(function(n){return'<span class="vtag'+(n===cUser?' me':'')+'">'+n+'</span>';}).join('');
+      var lnk=m.link?'<a href="'+m.link+'" target="_blank" rel="noopener" class="mlink">\u2197 Recipe on '+dom(m.link)+'</a>':'';
+      var nw=isNew(aDay,m.id)?'<span class="newb">New</span>':'';
+      h+='<div class="meal"><div class="mrow"><div class="minfo">'
+        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
+        +'<span class="mname">'+m.name+'</span>'+(iw?'<span class="wb">Top pick</span>':'')+nw+'</div>'
+        +'<div class="mdesc">'+m.desc+'</div>'+lnk
+        +'<div class="bw"><div class="bar" style="width:'+(dmVotes?Math.round(mv.voters.length/maxV*100):0)+'%"></div></div>'
+        +'</div><div class="vs"><span class="vc">'+mv.voters.length+'</span>'
+        +'<button class="vb'+(my?' vd':'')+'" onclick="vote(\''+aDay+'\','+m.id+')" '+(cv?'':'disabled')+'>'+(my?'\u2713':'\u2665')+'</button>'
+        +'</div></div>'+(tags?'<div class="vtags">'+tags+'</div>':'')+'</div>';
+    });
+  }
+  h+='<div class="tot">'+dmVoters.length+' of '+hm.length+' home have voted</div>';
+  h+='<button class="gbtn" onclick="togG(\''+aDay+'\')">\u2605 '+(win?'Shop '+win.name+' on Walmart':'View grocery list on Walmart')+'</button>';
+  h+='<div class="gpnl'+(gDay===aDay?' open':'')+'" id="gp-'+aDay+'"></div></div>';
+  e.innerHTML=h;
+  if(gDay===aDay)rGroc(aDay);
+}
+
+// ── GROCERY ──
+function togG(iso){gDay=gDay===iso?null:iso;rDay();}
+function rGroc(iso){
+  var p=document.getElementById('gp-'+iso);if(!p)return;
+  var w=winner(iso);
+  if(!w){p.innerHTML='<div class="gph"><span class="gpt">Grocery list</span><button class="gpc" onclick="togG(\''+iso+'\')">close</button></div><div class="noing">No winner yet!</div>';return;}
+  var ig=ings[w.id]||[];
+  p.innerHTML='<div class="gph"><span class="gpt">'+w.name+'</span><button class="gpc" onclick="togG(\''+iso+'\')">close</button></div>'
+    +'<div class="gsub">Tap any item to search on Walmart and add to your cart</div>'
+    +'<div>'+(ig.length?ig.map(function(i){return'<div class="irow"><span class="inm">'+i.n+'</span><span class="iqt">'+(i.q||'')+'</span><a href="'+wu(i.n)+'" target="_blank" rel="noopener" class="wlnk">\u2605 Walmart</a></div>';}).join(''):'<div class="noing">No ingredients yet \u2014 add in Kitchen Management</div>')+'</div>'
+    +'<div class="gtip">Long-press to open in new tab</div>';
+}
+
+// ── VOTE ──
+function vote(iso,mid){
+  if(!cUser||isAw(cUser,iso))return;
+  if(!dayData[iso])return;
+  if(!dayData[iso].votes[mid])dayData[iso].votes[mid]={voters:[]};
+  meals.forEach(function(m){if(m.id!==mid&&dayData[iso].votes[m.id])dayData[iso].votes[m.id].voters=dayData[iso].votes[m.id].voters.filter(function(n){return n!==cUser;});});
+  var v=dayData[iso].votes[mid].voters,i=v.indexOf(cUser);
+  if(i>=0)v.splice(i,1);else v.push(cUser);
+  rTabs();rDay();rWho();saveAll();
+}
+function selDay(iso){aDay=iso;rTabs();rDay();rWho();}
+function rAll(){rWho();rTabs();rDay();rReqP();rSugP();if(adm)rAdm();}
+
+// ── REQUESTS ──
+function submitReq(){
+  var ne=document.getElementById('req-name'),no=document.getElementById('req-note');
+  var n=ne.value.trim(),note=no.value.trim();
+  if(!n){showSt('req-st','Please enter a meal name','err');return;}
+  var by=cUser||'Someone';
+  reqs.push({id:nReq++,name:n,note:note,by:by,date:new Date().toLocaleDateString(),done:false});
+  ne.value='';no.value='';saveAll();rReqP();showSt('req-st','Thanks '+by+'! Your request has been noted.','ok');
+  if(adm)rAdm();
+}
+function rReqP(){
+  var e=document.getElementById('req-pend');
+  var open=reqs.filter(function(r){return!r.done;});
+  if(!open.length){e.innerHTML='';return;}
+  e.innerHTML='<div style="font-size:.72rem;color:var(--mt);margin-bottom:5px;font-style:italic">Current requests ('+open.length+'):</div>'
+    +open.map(function(r){return'<div class="pi"><div class="pdot r"></div><span style="flex:1">'+r.name+(r.note?' \u2014 <em style="font-size:.75rem">'+r.note+'</em>':'')+'</span><span class="pby">'+r.by+'</span></div>';}).join('');
+}
+
+// ── SUGGESTIONS ──
+function submitSug(){
+  var ne=document.getElementById('sug-name'),de=document.getElementById('sug-desc'),le=document.getElementById('sug-link');
+  var n=ne.value.trim(),d=de.value.trim(),rl=le.value.trim();
+  if(!n){showSt('sug-st','Please enter a meal name','err');return;}
+  var lnk=rl?cu(rl):'';
+  if(rl&&!vu(cu(rl))){showSt('sug-st',"Doesn't look like a valid link",'err');return;}
+  var by=cUser||'Someone';
+  sugs.push({id:nSug++,name:n,desc:d,link:lnk,by:by,date:new Date().toLocaleDateString()});
+  ne.value='';de.value='';le.value='';saveAll();rSugP();showSt('sug-st','Thanks '+by+'! "'+n+'" sent to the kitchen.','ok');
+  if(adm)rAdm();
+}
+function rSugP(){
+  var e=document.getElementById('sug-pend');
+  if(!sugs.length){e.innerHTML='';return;}
+  e.innerHTML='<div style="font-size:.72rem;color:var(--mt);margin-bottom:5px;font-style:italic">Awaiting approval ('+sugs.length+'):</div>'
+    +sugs.map(function(s){return'<div class="pi"><div class="pdot g"></div><span style="flex:1">'+s.name+(s.link?' <span style="font-size:.65rem;color:var(--g)">\u2197</span>':'')+'</span><span class="pby">'+s.by+'</span></div>';}).join('');
+}
+function showSt(id,msg,cls){var e=document.getElementById(id);e.textContent=msg;e.className='fst '+cls;setTimeout(function(){e.textContent='';e.className='fst';},4000);}
+function appSug(id){
+  var s=sugs.find(function(x){return x.id===id;});if(!s)return;
+  var m={id:nMeal++,name:s.name,desc:s.desc||'',link:s.link||''};
+  meals.push(m);ings[m.id]=[];
+  WD.forEach(function(d){
+    if(!dayData[d.iso])dayData[d.iso]={open:true,away:[],votes:{}};
+    dayData[d.iso].votes[m.id]={voters:[]};
+    if(dayMenus[d.iso])dayMenus[d.iso].mealIds.push(m.id);
+  });
+  sugs=sugs.filter(function(x){return x.id!==id;});saveAll();rAll();
+}
+function disSug(id){sugs=sugs.filter(function(x){return x.id!==id;});saveAll();rAdm();rSugP();}
+function markDone(id){var r=reqs.find(function(x){return x.id===id;});if(r)r.done=true;saveAll();rAdm();rReqP();}
+function delReq(id){reqs=reqs.filter(function(x){return x.id!==id;});saveAll();rAdm();rReqP();}
+
+// ── ADMIN ──
+function togAdm(){
+  var p=document.getElementById('apnl');p.classList.toggle('open');
+  if(!p.classList.contains('open')){adm=false;document.getElementById('msec').style.display='none';document.getElementById('lsec').style.display='block';}
+}
+function doUnlock(){
+  var v=document.getElementById('pw').value,e=document.getElementById('pwerr');
+  if(v===ADMIN_PW){adm=true;document.getElementById('lsec').style.display='none';document.getElementById('msec').style.display='block';e.style.display='none';rAdm();}
+  else e.style.display='block';
+}
+function aTab(t){
+  document.querySelectorAll('.atab').forEach(function(e,i){e.classList.toggle('on',['menu','daymenu','reqs','sugs','fam','sch','vot'][i]===t);});
+  document.querySelectorAll('.asec').forEach(function(e){e.classList.remove('on');});
+  document.getElementById('asec-'+t).classList.add('on');rAdm();
+}
+
+// ── DAY MENU CONTROLS ──
+function togDayMeal(iso,mid,on){
+  if(!dayMenus[iso])dayMenus[iso]={mealIds:[],newMealIds:[]};
+  var ids=dayMenus[iso].mealIds;
+  if(on){if(!ids.includes(mid))ids.push(mid);}
+  else{dayMenus[iso].mealIds=ids.filter(function(x){return x!==mid;});dayMenus[iso].newMealIds=(dayMenus[iso].newMealIds||[]).filter(function(x){return x!==mid;});}
+  saveAll();rTabs();rDay();rAdm();
+}
+function togNew(iso,mid){
+  if(!dayMenus[iso])dayMenus[iso]={mealIds:[],newMealIds:[]};
+  if(!dayMenus[iso].newMealIds)dayMenus[iso].newMealIds=[];
+  var ni=dayMenus[iso].newMealIds,idx=ni.indexOf(mid);
+  if(idx>=0)ni.splice(idx,1);
+  else{ni.push(mid);if(!dayMenus[iso].mealIds.includes(mid))dayMenus[iso].mealIds.push(mid);}
+  saveAll();rDay();rAdm();
+}
+function setAllDay(iso){
+  if(!dayMenus[iso])dayMenus[iso]={mealIds:[],newMealIds:[]};
+  dayMenus[iso].mealIds=meals.map(function(m){return m.id;});
+  saveAll();rTabs();rDay();rAdm();
+}
+
+// ── RENDER ADMIN ──
+function rAdm(){
+  if(!adm)return;
+  var rb=document.getElementById('rbadge'),sb=document.getElementById('sbadge');
+  var or=reqs.filter(function(r){return!r.done;}).length;
+  rb.style.display=or?'inline':'none';if(or)rb.textContent=or;
+  sb.style.display=sugs.length?'inline':'none';if(sugs.length)sb.textContent=sugs.length;
+
+  // MENU
+  var ml=document.getElementById('meal-list');ml.innerHTML='';
+  meals.forEach(function(m){
+    var ig=ings[m.id]||[];
+    ml.innerHTML+='<div class="mr"><div class="mrhdr"><div>'
+      +'<div class="mrname">'+m.name+'</div>'
+      +(m.desc?'<div class="mrsub">'+m.desc+'</div>':'')
+      +(m.link?'<div class="mrsub" style="color:var(--g)">\u2197 '+dom(m.link)+'</div>':'')
+      +'</div><button class="delbtn" onclick="delMeal('+m.id+')">\u2715</button></div>'
+      +'<div class="ied"><div class="iedt">Grocery list ('+ig.length+')</div>'+(m.link?'<button class="pullbtn" id="pull-'+m.id+'" onclick="pullIngredients('+m.id+',\'' +m.link+ '\')">&#8659; Pull ingredients from recipe link</button>':'')
+      +'<div id="il-'+m.id+'">'+(ig.map(function(x,i){return'<div class="ir"><span class="irn">'+x.n+'</span><span class="irq">'+(x.q||'')+'</span><button class="delbtn" onclick="delIng('+m.id+','+i+')">\u2715</button></div>';}).join('')||'<div style="font-size:.75rem;color:var(--mt);padding:3px 0;font-style:italic">No ingredients yet</div>')+'</div>'
+      +'<div class="iadd"><input class="iinp" id="in-'+m.id+'" placeholder="Ingredient..."/>'
+      +'<div class="ir2"><input class="iqinp" id="iq-'+m.id+'" placeholder="Qty..."/>'
+      +'<button class="iaddbtn" onclick="addIng('+m.id+')">+ Add</button></div></div></div></div>';
+  });
+  if(!meals.length)ml.innerHTML='<div style="font-size:.82rem;color:var(--mt);padding:10px 0;font-style:italic">No meals yet</div>';
+
+  // DAY MENUS — show all 14 days
+  var dme=document.getElementById('day-menu-ed');dme.innerHTML='';
+  WD.forEach(function(d){
+    var dm=dayMenus[d.iso]||{mealIds:[],newMealIds:[]};
+    var dayLabel=d.dayName+', '+d.month+' '+d.date+(d.isToday?' (Today)':d.isTomorrow?' (Tomorrow)':'');
+    var rows=meals.map(function(m){
+      var on=dm.mealIds.includes(m.id);
+      var isnew=(dm.newMealIds||[]).includes(m.id);
+      return'<div class="dmp-meal"><span class="dmp-name">'+m.name+'</span><div class="dmp-ctrl">'
+        +'<button class="newtag'+(isnew?' on':'')+'" onclick="togNew(\''+d.iso+'\','+m.id+')">'+(isnew?'\u2605 New':'\u2606 New')+'</button>'
+        +'<label class="tsw"><input type="checkbox" '+(on?'checked':'')+' onchange="togDayMeal(\''+d.iso+'\','+m.id+',this.checked)"/><span class="tsl"></span></label>'
+        +'</div></div>';
+    }).join('');
+    dme.innerHTML+='<div style="margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--cb)">'
+      +'<div style="font-family:\'Playfair Display\',serif;font-size:.9rem;color:var(--b);margin-bottom:.4rem;display:flex;align-items:center;justify-content:space-between">'
+      +'<span>'+dayLabel+'</span>'
+      +'<button class="ab sm" onclick="setAllDay(\''+d.iso+'\')">All on</button></div>'
+      +rows+'</div>';
+  });
+
+  // REQUESTS
+  var rl=document.getElementById('req-list');rl.innerHTML='';
+  var or2=reqs.filter(function(r){return!r.done;}),dr=reqs.filter(function(r){return r.done;});
+  if(!or2.length&&!dr.length){rl.innerHTML='<div style="font-size:.82rem;color:var(--mt);padding:10px 0;font-style:italic">No requests yet</div>';}
+  else{
+    if(or2.length){rl.innerHTML+='<div style="font-size:.7rem;color:#c8400a;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Open</div>';or2.forEach(function(r){rl.innerHTML+='<div class="sr"><div class="srname">'+r.name+'</div><div class="srmeta">by '+r.by+' &middot; '+r.date+(r.note?' &mdash; '+r.note:'')+'</div><div class="sracts"><button class="ab ok" onclick="markDone('+r.id+')">\u2713 Added</button><button class="delbtn" onclick="delReq('+r.id+')">\u2715</button></div></div>';});}
+    if(dr.length){rl.innerHTML+='<div style="font-size:.7rem;color:var(--gt);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">Done</div>';dr.forEach(function(r){rl.innerHTML+='<div class="sr" style="opacity:.5"><div class="srname" style="text-decoration:line-through">'+r.name+'</div><div class="srmeta">by '+r.by+' &middot; added \u2713 <button class="delbtn" style="margin-left:6px" onclick="delReq('+r.id+')">\u2715</button></div></div>';});}
+  }
+
+  // SUGGESTIONS
+  var sl=document.getElementById('sug-list');sl.innerHTML='';
+  if(!sugs.length)sl.innerHTML='<div style="font-size:.82rem;color:var(--mt);padding:10px 0;font-style:italic">No pending suggestions</div>';
+  else sugs.forEach(function(s){sl.innerHTML+='<div class="sr"><div class="srname">'+s.name+'</div><div class="srmeta">by '+s.by+' &middot; '+s.date+(s.desc?' &mdash; '+s.desc:'')+'</div>'+(s.link?'<div class="srlink">'+s.link+'</div>':'')+'<div class="sracts"><button class="ab ok" onclick="appSug('+s.id+')">\u2713 Add to menu</button><button class="delbtn" onclick="disSug('+s.id+')">\u2715</button></div></div>';});
+
+  // FAMILY
+  var fl=document.getElementById('fam-list');fl.innerHTML='';
+  fam.forEach(function(m){fl.innerHTML+='<div class="ritem"><div class="rlbl">'+m.name+'<br><span class="rsub">'+m.kw+'</span></div><button class="delbtn" onclick="delFam('+m.id+')">\u2715</button></div>';});
+
+  // SCHEDULE — 14 days
+  var dl=document.getElementById('sch-list');dl.innerHTML='';
+  WD.forEach(function(d){
+    var open=dayData[d.iso]?dayData[d.iso].open:true;
+    var dayLabel=d.dayName+' '+d.month+' '+d.date+(d.isToday?' \u2013 Today':'');
+    dl.innerHTML+='<div class="ritem"><span class="rlbl">'+dayLabel+'</span>'
+      +'<label class="tsw"><input type="checkbox" '+(open?'checked':'')+' onchange="togDay(\''+d.iso+'\',this.checked)"/><span class="tsl"></span></label></div>';
+  });
+
+  // VOTES — 14 days
+  var vl=document.getElementById('vot-list');vl.innerHTML='';
+  WD.forEach(function(d){
+    var tv=tvotes(d.iso);
+    var dayLabel=d.dayName+' '+d.month+' '+d.date;
+    vl.innerHTML+='<div class="ritem"><span class="rlbl">'+dayLabel+' <span class="rsub">'+tv+' vote'+(tv!==1?'s':'')+'</span></span><button class="ab sm" onclick="rstDay(\''+d.iso+'\')">Reset</button></div>';
+  });
+  vl.innerHTML+='<button class="rall" onclick="rstAll()">Reset all 14 days</button>';
+}
+
+// ── MEAL / FAM / DAY ADMIN ──
+
+function pullIngredients(mid, url) {
+  var btn = document.getElementById('pull-'+mid);
+  if(btn){ btn.textContent = 'Pulling ingredients...'; btn.classList.add('loading'); btn.disabled = true; }
+  fetch('/.netlify/functions/recipe', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({url: url})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.ingredients && data.ingredients.length > 0){
+      ings[mid] = data.ingredients;
+      saveAll();
+      rAdm();
+      // flash success
+      var b = document.getElementById('pull-'+mid);
+      if(b){ b.textContent = '\u2713 '+data.ingredients.length+' ingredients pulled!'; b.style.background='#c8e6c9'; setTimeout(function(){ rAdm(); }, 2000); }
+    } else {
+      var b = document.getElementById('pull-'+mid);
+      if(b){ b.textContent = 'No ingredients found — try adding manually'; b.classList.remove('loading'); b.disabled = false; }
+    }
+  })
+  .catch(function(err){
+    var b = document.getElementById('pull-'+mid);
+    if(b){ b.textContent = 'Error — check link and try again'; b.classList.remove('loading'); b.disabled = false; }
+  });
+}
+
+function addIng(mid){var ni=document.getElementById('in-'+mid),qi=document.getElementById('iq-'+mid);var n=ni.value.trim(),q=qi.value.trim();if(!n)return;if(!ings[mid])ings[mid]=[];ings[mid].push({n:n,q:q});ni.value='';qi.value='';saveAll();rAdm();}
+function delIng(mid,i){if(ings[mid])ings[mid].splice(i,1);saveAll();rAdm();}
+function addMeal(){
+  var n=document.getElementById('nn').value.trim(),d2=document.getElementById('nd').value.trim(),rl=document.getElementById('nl').value.trim();
+  if(!n)return;
+  var m={id:nMeal++,name:n,desc:d2||'',link:rl?cu(rl):''};
+  meals.push(m);ings[m.id]=[];
+  WD.forEach(function(d){
+    if(!dayData[d.iso])dayData[d.iso]={open:true,away:[],votes:{}};
+    dayData[d.iso].votes[m.id]={voters:[]};
+    if(dayMenus[d.iso])dayMenus[d.iso].mealIds.push(m.id);
+  });
+  document.getElementById('nn').value='';document.getElementById('nd').value='';document.getElementById('nl').value='';
+  rAll();saveAll();
+}
+function delMeal(id){
+  meals=meals.filter(function(m){return m.id!==id;});
+  delete ings[id];
+  WD.forEach(function(d){
+    if(dayData[d.iso])delete dayData[d.iso].votes[id];
+    if(dayMenus[d.iso]){dayMenus[d.iso].mealIds=dayMenus[d.iso].mealIds.filter(function(x){return x!==id;});dayMenus[d.iso].newMealIds=(dayMenus[d.iso].newMealIds||[]).filter(function(x){return x!==id;});}
+  });
+  rAll();saveAll();
+}
+function addFam(){var n=document.getElementById('fn').value.trim(),k=document.getElementById('fk').value.trim();if(!n)return;fam.push({id:nFam++,name:n,kw:k||n+' work'});document.getElementById('fn').value='';document.getElementById('fk').value='';rAll();saveAll();}
+function delFam(id){var m=fam.find(function(m){return m.id===id;});if(m&&m.name===cUser)cUser=null;fam=fam.filter(function(m){return m.id!==id;});rAll();saveAll();}
+function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;rAll();saveAll();}
+function rstDay(iso){if(!dayData[iso])return;meals.forEach(function(m){dayData[iso].votes[m.id]={voters:[]};});rAll();saveAll();}
+function rstAll(){WD.forEach(function(d){rstDay(d.iso);});}
+
+// ── EVENT LISTENERS ──
+document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doUnlock();});
+document.getElementById('sug-name').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('sug-desc').focus();});
+document.getElementById('req-name').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('req-note').focus();});
+
+// ── BOOT ──
+loadAll();
+document.getElementById('ldg').style.display='none';
+document.getElementById('app').style.display='block';
+document.getElementById('stxt').textContent='Ready \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
+document.getElementById('dot').classList.add('ok');
+rAll();
+</script>
+</body>
+</html>
