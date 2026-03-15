@@ -55,7 +55,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ message: 'TELEGRAM_BOT_TOKEN not configured' }),
+      body: JSON.stringify({ message: 'Telegram bot not configured — please set TELEGRAM_BOT_TOKEN in site settings and redeploy' }),
     };
   }
 
