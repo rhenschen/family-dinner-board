@@ -238,7 +238,7 @@ input:checked+.tsl::before{transform:translateX(20px)}
   <div class="sbar">
     <div class="dot" id="dot"></div>
     <span id="stxt">Loading...</span>
-    <span class="sv" id="sv">&#10003; Saved</span>
+    <span class="sv" id="sv">&#10003; Synced</span>
   </div>
   <div id="ldg" class="ldg">Loading your dinner board...</div>
   <div id="app" style="display:none">
@@ -389,7 +389,7 @@ var DI = {
 };
 
 // ── STATE ──
-// Data keyed by ISO date string (YYYY-MM-DD) — persists correctly across days
+// Data keyed by ISO date string (YYYY-MM-DD) — synced to server via Netlify Blobs
 var meals=[], fam=[], sugs=[], reqs=[], ings={};
 // dayData[iso] = {open, away[], votes:{mealId:{voters:[]}}}
 // dayMenus[iso] = {mealIds:[], newMealIds:[]}
@@ -398,60 +398,149 @@ var nMeal=100, nFam=100, nSug=1, nReq=1;
 var aDay=WD[0].iso; // active day ISO key
 var cUser=null, adm=false, gDay=null;
 
-// ── STORAGE — keyed by ISO date so each date persists separately ──
+// ── STORAGE — server-side via Netlify Blobs + localStorage cache ──
 function sv(k,v){try{localStorage.setItem('dfb_'+k,JSON.stringify(v));}catch(e){}}
 function ld(k,d){try{var v=localStorage.getItem('dfb_'+k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
 
+var _saveTimer=null;
+var _syncInterval=null;
+
+function gatherState(){
+  var dd={};
+  WD.forEach(function(d){
+    if(dayData[d.iso]){
+      dd[d.iso]={open:dayData[d.iso].open,away:dayData[d.iso].away||[],votes:dayData[d.iso].votes};
+    }
+  });
+  return {
+    meals:{meals:meals,nMeal:nMeal},
+    fam:{fam:fam,nFam:nFam},
+    sugs:{sugs:sugs,nSug:nSug},
+    reqs:{reqs:reqs,nReq:nReq},
+    ings:ings,
+    dayMenus:dayMenus,
+    dayData:dd,
+    ts:Date.now()
+  };
+}
+
 function saveAll(){
+  // Save to localStorage as cache
   sv('meals',{meals:meals,nMeal:nMeal});
   sv('fam',{fam:fam,nFam:nFam});
   sv('sugs',{sugs:sugs,nSug:nSug});
   sv('reqs',{reqs:reqs,nReq:nReq});
   sv('ings',ings);
   sv('dayMenus',dayMenus);
-  // Save per-date vote+schedule data
   WD.forEach(function(d){
     if(dayData[d.iso]){
       sv('day_'+d.iso,{open:dayData[d.iso].open,votes:dayData[d.iso].votes});
     }
   });
   flash();
+  // Debounce server save — batch rapid changes into one request
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(pushToServer,500);
+}
+
+function pushToServer(){
+  var state=gatherState();
+  fetch('/.netlify/functions/data',{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(state)
+  }).catch(function(e){console.log('Save to server failed, will retry:',e);});
+}
+
+function applyServerState(s){
+  if(!s||!s.meals)return false;
+  meals=s.meals.meals.map(function(x){return Object.assign({link:''},x);});
+  nMeal=s.meals.nMeal;
+  fam=s.fam.fam;nFam=s.fam.nFam;
+  sugs=(s.sugs.sugs||[]).map(function(x){return Object.assign({link:''},x);});nSug=s.sugs.nSug;
+  reqs=s.reqs.reqs;nReq=s.reqs.nReq;
+  ings=s.ings||{};
+  meals.forEach(function(m){if(!ings[m.id]&&DI[m.name])ings[m.id]=DI[m.name].map(function(x){return Object.assign({},x);});});
+  dayMenus=s.dayMenus||{};
+  WD.forEach(function(d){
+    dayData[d.iso]={open:true,away:[],votes:{}};
+    meals.forEach(function(m){dayData[d.iso].votes[m.id]={voters:[]};});
+    var saved=s.dayData&&s.dayData[d.iso]?s.dayData[d.iso]:null;
+    if(saved){
+      dayData[d.iso].open=saved.open!==undefined?saved.open:true;
+      dayData[d.iso].away=saved.away||[];
+      meals.forEach(function(m){dayData[d.iso].votes[m.id]=saved.votes&&saved.votes[m.id]?saved.votes[m.id]:{voters:[]};});
+    }
+    if(!dayMenus[d.iso]){
+      dayMenus[d.iso]={mealIds:meals.map(function(m){return m.id;}),newMealIds:[]};
+    } else {
+      meals.forEach(function(m){if(!dayMenus[d.iso].mealIds.includes(m.id))dayMenus[d.iso].mealIds.push(m.id);});
+      if(!dayMenus[d.iso].newMealIds)dayMenus[d.iso].newMealIds=[];
+    }
+  });
+  // Also cache to localStorage
+  sv('meals',{meals:meals,nMeal:nMeal});
+  sv('fam',{fam:fam,nFam:nFam});
+  sv('sugs',{sugs:sugs,nSug:nSug});
+  sv('reqs',{reqs:reqs,nReq:nReq});
+  sv('ings',ings);
+  sv('dayMenus',dayMenus);
+  return true;
+}
+
+var _lastServerTs=0;
+
+function pullFromServer(cb){
+  fetch('/.netlify/functions/data')
+  .then(function(r){return r.json();})
+  .then(function(s){
+    if(s&&s.ts&&s.ts>_lastServerTs){
+      _lastServerTs=s.ts;
+      applyServerState(s);
+      rAll();
+    }
+    if(cb)cb(true);
+  })
+  .catch(function(e){
+    console.log('Server pull failed, using local:',e);
+    if(cb)cb(false);
+  });
+}
+
+function startSync(){
+  // Poll server every 10 seconds to pick up changes from other devices
+  _syncInterval=setInterval(function(){pullFromServer();},10000);
+  // Also sync when tab becomes visible again
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden)pullFromServer();
+  });
 }
 
 function loadAll(){
-  // Meals
+  // First load from localStorage as instant cache
   var m=ld('meals',null);
   if(m){meals=m.meals.map(function(x){return Object.assign({link:''},x);});nMeal=m.nMeal;}
   else{meals=DM.map(function(x){return Object.assign({},x);});nMeal=10;}
-  // Family
   var f=ld('fam',null);
   if(f){fam=f.fam;nFam=f.nFam;}
   else{fam=DF.map(function(x){return Object.assign({},x);});nFam=10;}
-  // Suggestions
   var s=ld('sugs',null);
   if(s){sugs=s.sugs.map(function(x){return Object.assign({link:''},x);});nSug=s.nSug;}
   else{sugs=[];nSug=1;}
-  // Requests
   var r=ld('reqs',null);
   if(r){reqs=r.reqs;nReq=r.nReq;}
   else{reqs=[];nReq=1;}
-  // Ingredients
   ings=ld('ings',{});
   meals.forEach(function(m){if(!ings[m.id]&&DI[m.name])ings[m.id]=DI[m.name].map(function(x){return Object.assign({},x);});});
-  // Day menus — keyed by ISO date
   dayMenus=ld('dayMenus',{});
-  // Per-date data
   WD.forEach(function(d){
-    // Init structure
     dayData[d.iso]={open:true,away:[],votes:{}};
     meals.forEach(function(m){dayData[d.iso].votes[m.id]={voters:[]};});
-    // Load saved data for this date
     var saved=ld('day_'+d.iso,null);
     if(saved){
       dayData[d.iso].open=saved.open!==undefined?saved.open:true;
       meals.forEach(function(m){dayData[d.iso].votes[m.id]=saved.votes&&saved.votes[m.id]?saved.votes[m.id]:{voters:[]};});
     }
-    // Init day menu if missing
     if(!dayMenus[d.iso]){
       dayMenus[d.iso]={mealIds:meals.map(function(m){return m.id;}),newMealIds:[]};
     } else {
@@ -469,6 +558,14 @@ function loadAll(){
       if(dt<cutoff){try{localStorage.removeItem(k);}catch(e){}}
     }
   }
+  // Then pull latest from server (will overwrite local if newer)
+  pullFromServer(function(ok){
+    if(ok){
+      // If first load and server was empty, push local data up
+      if(!_lastServerTs){pushToServer();_lastServerTs=Date.now();}
+    }
+  });
+  startSync();
 }
 
 function flash(){var e=document.getElementById('sv');e.classList.add('show');setTimeout(function(){e.classList.remove('show');},1500);}
