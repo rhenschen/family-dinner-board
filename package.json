@@ -1,0 +1,12 @@
+{
+  "name": "family-dinner-board",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.13.6"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
