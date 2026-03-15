@@ -512,7 +512,7 @@ function rWho(){
 function setU(n){cUser=cUser===n?null:n;rWho();rDay();}
 
 // ── TABS (14 days) ──
-function rTabs(){
+function rTabs(scrollToActive){
   var e=document.getElementById('tabs');e.innerHTML='';
   WD.forEach(function(d){
     var x=dayData[d.iso]||{open:true};
@@ -530,12 +530,14 @@ function rTabs(){
       +meta
       +'</div>';
   });
-  // Scroll active tab into view
-  setTimeout(function(){
-    var tabs=document.getElementById('tabs');
-    var active=tabs.querySelector('.tab.on');
-    if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  },50);
+  // Only scroll active tab into view when explicitly requested (e.g. tab selection or initial load)
+  if(scrollToActive){
+    setTimeout(function(){
+      var tabs=document.getElementById('tabs');
+      var active=tabs.querySelector('.tab.on');
+      if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    },50);
+  }
 }
 
 // ── DAY PANEL ──
@@ -618,8 +620,8 @@ function vote(iso,mid){
   if(i>=0)v.splice(i,1);else v.push(cUser);
   rTabs();rDay();rWho();saveAll();
 }
-function selDay(iso){aDay=iso;rTabs();rDay();rWho();}
-function rAll(){rWho();rTabs();rDay();rReqP();rSugP();if(adm)rAdm();}
+function selDay(iso){aDay=iso;rTabs(true);rDay();rWho();}
+function rAll(scrollToActive){rWho();rTabs(scrollToActive);rDay();rReqP();rSugP();if(adm)rAdm();}
 
 // ── REQUESTS ──
 function submitReq(){
@@ -958,7 +960,7 @@ document.getElementById('ldg').style.display='none';
 document.getElementById('app').style.display='block';
 document.getElementById('stxt').textContent='Ready \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
 document.getElementById('dot').classList.add('ok');
-rAll();
+rAll(true);
 </script>
 </body>
 </html>
