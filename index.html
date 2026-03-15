@@ -787,7 +787,9 @@ function togDayMeal(iso,mid,on){
   var ids=dayMenus[iso].mealIds;
   if(on){if(!ids.includes(mid))ids.push(mid);}
   else{dayMenus[iso].mealIds=ids.filter(function(x){return x!==mid;});dayMenus[iso].newMealIds=(dayMenus[iso].newMealIds||[]).filter(function(x){return x!==mid;});}
+  var sy=window.scrollY;
   saveAll();rTabs();rDay();rAdm();
+  window.scrollTo(0,sy);
 }
 function togNew(iso,mid){
   if(!dayMenus[iso])dayMenus[iso]={mealIds:[],newMealIds:[]};
@@ -795,12 +797,16 @@ function togNew(iso,mid){
   var ni=dayMenus[iso].newMealIds,idx=ni.indexOf(mid);
   if(idx>=0)ni.splice(idx,1);
   else{ni.push(mid);if(!dayMenus[iso].mealIds.includes(mid))dayMenus[iso].mealIds.push(mid);}
+  var sy=window.scrollY;
   saveAll();rDay();rAdm();
+  window.scrollTo(0,sy);
 }
 function setAllDay(iso){
   if(!dayMenus[iso])dayMenus[iso]={mealIds:[],newMealIds:[]};
   dayMenus[iso].mealIds=meals.map(function(m){return m.id;});
+  var sy=window.scrollY;
   saveAll();rTabs();rDay();rAdm();
+  window.scrollTo(0,sy);
 }
 
 // ── RENDER ADMIN ──
@@ -965,7 +971,7 @@ function delMeal(id){
 }
 function addFam(){var n=document.getElementById('fn').value.trim(),k=document.getElementById('fk').value.trim();if(!n)return;fam.push({id:nFam++,name:n,kw:k||n+' work'});document.getElementById('fn').value='';document.getElementById('fk').value='';rAll();saveAll();}
 function delFam(id){var m=fam.find(function(m){return m.id===id;});if(m&&m.name===cUser)cUser=null;fam=fam.filter(function(m){return m.id!==id;});rAll();saveAll();}
-function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;rAll();saveAll();}
+function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;var sy=window.scrollY;rAll();saveAll();window.scrollTo(0,sy);}
 function rstDay(iso){if(!dayData[iso])return;meals.forEach(function(m){dayData[iso].votes[m.id]={voters:[]};});rAll();saveAll();}
 function rstAll(){WD.forEach(function(d){rstDay(d.iso);});}
 
