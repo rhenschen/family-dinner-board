@@ -278,6 +278,7 @@ input:checked+.tsl::before{transform:translateX(20px)}
           <div class="atab" onclick="aTab('fam')">Family</div>
           <div class="atab" onclick="aTab('sch')">Schedule</div>
           <div class="atab" onclick="aTab('vot')">Votes</div>
+          <div class="atab" onclick="aTab('tg')">Reminders</div>
         </div>
         <div class="asec on" id="asec-menu">
           <div class="albl">Master meal list</div>
@@ -316,6 +317,20 @@ input:checked+.tsl::before{transform:translateX(20px)}
         <div class="asec" id="asec-vot">
           <div class="albl">Reset votes by day</div>
           <div id="vot-list"></div>
+        </div>
+        <div class="asec" id="asec-tg">
+          <div class="albl">Telegram Reminder Setup</div>
+          <div id="tg-status" style="font-size:.8rem;color:var(--mt);margin-bottom:.75rem;font-style:italic">Loading bot info...</div>
+          <div class="albl">Chat ID</div>
+          <input class="ainp" id="tg-chatid" placeholder="e.g. -1001234567890"/>
+          <div style="font-size:.72rem;color:var(--mt);margin-bottom:.6rem;font-style:italic">Paste your Telegram group chat ID here, or click below to detect it automatically.</div>
+          <button class="ab full" onclick="detectChats()" id="tg-detect-btn">Detect chats from bot</button>
+          <div id="tg-chats" style="margin-top:.5rem"></div>
+          <div class="albl" style="margin-top:1rem">Send a reminder</div>
+          <div style="font-size:.8rem;color:var(--br);margin-bottom:.5rem">This will send a dinner vote reminder to your Telegram group.</div>
+          <button class="ab full" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32" onclick="sendReminder()" id="tg-send-btn">Send dinner reminder</button>
+          <div id="tg-result" style="margin-top:.5rem;font-size:.8rem"></div>
+          <div class="dbnote" style="margin-top:.75rem">Chat ID is saved to this device only</div>
         </div>
       </div>
     </div>
@@ -497,7 +512,7 @@ function rWho(){
 function setU(n){cUser=cUser===n?null:n;rWho();rDay();}
 
 // ── TABS (14 days) ──
-function rTabs(){
+function rTabs(scrollToActive){
   var e=document.getElementById('tabs');e.innerHTML='';
   WD.forEach(function(d){
     var x=dayData[d.iso]||{open:true};
@@ -515,12 +530,14 @@ function rTabs(){
       +meta
       +'</div>';
   });
-  // Scroll active tab into view
-  setTimeout(function(){
-    var tabs=document.getElementById('tabs');
-    var active=tabs.querySelector('.tab.on');
-    if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  },50);
+  // Only scroll active tab into view when explicitly requested (e.g. tab selection or initial load)
+  if(scrollToActive){
+    setTimeout(function(){
+      var tabs=document.getElementById('tabs');
+      var active=tabs.querySelector('.tab.on');
+      if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    },50);
+  }
 }
 
 // ── DAY PANEL ──
@@ -603,8 +620,8 @@ function vote(iso,mid){
   if(i>=0)v.splice(i,1);else v.push(cUser);
   rTabs();rDay();rWho();saveAll();
 }
-function selDay(iso){aDay=iso;rTabs();rDay();rWho();}
-function rAll(){rWho();rTabs();rDay();rReqP();rSugP();if(adm)rAdm();}
+function selDay(iso){aDay=iso;rTabs(true);rDay();rWho();}
+function rAll(scrollToActive){rWho();rTabs(scrollToActive);rDay();rReqP();rSugP();if(adm)rAdm();}
 
 // ── REQUESTS ──
 function submitReq(){
@@ -669,9 +686,10 @@ function doUnlock(){
   else e.style.display='block';
 }
 function aTab(t){
-  document.querySelectorAll('.atab').forEach(function(e,i){e.classList.toggle('on',['menu','daymenu','reqs','sugs','fam','sch','vot'][i]===t);});
+  document.querySelectorAll('.atab').forEach(function(e,i){e.classList.toggle('on',['menu','daymenu','reqs','sugs','fam','sch','vot','tg'][i]===t);});
   document.querySelectorAll('.asec').forEach(function(e){e.classList.remove('on');});
   document.getElementById('asec-'+t).classList.add('on');rAdm();
+  if(t==='tg')loadTgSetup();
 }
 
 // ── DAY MENU CONTROLS ──
@@ -838,6 +856,99 @@ function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes
 function rstDay(iso){if(!dayData[iso])return;meals.forEach(function(m){dayData[iso].votes[m.id]={voters:[]};});rAll();saveAll();}
 function rstAll(){WD.forEach(function(d){rstDay(d.iso);});}
 
+// ── TELEGRAM REMINDERS ──
+function getTgChatId(){
+  var saved=ld('tgChatId','');
+  var el=document.getElementById('tg-chatid');
+  if(el&&el.value.trim())return el.value.trim();
+  return saved;
+}
+function saveTgChatId(id){
+  sv('tgChatId',id);
+  var el=document.getElementById('tg-chatid');
+  if(el)el.value=id;
+}
+function loadTgSetup(){
+  var el=document.getElementById('tg-chatid');
+  var saved=ld('tgChatId','');
+  if(el&&!el.value&&saved)el.value=saved;
+}
+function detectChats(){
+  var btn=document.getElementById('tg-detect-btn');
+  var out=document.getElementById('tg-chats');
+  btn.textContent='Detecting...';btn.disabled=true;
+  fetch('/.netlify/functions/telegram-setup')
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.textContent='Detect chats from bot';btn.disabled=false;
+    if(data.error){out.innerHTML='<div style="color:#a32d2d;font-size:.8rem">'+data.error+'</div>';return;}
+    var st=document.getElementById('tg-status');
+    if(st)st.textContent='Bot: '+data.bot;
+    if(!data.chats||!data.chats.length){
+      out.innerHTML='<div style="font-size:.8rem;color:var(--ot)">'+data.hint+'</div>';
+      return;
+    }
+    var h='<div style="font-size:.72rem;color:var(--mt);margin-bottom:4px">Found chats &mdash; click to use:</div>';
+    data.chats.forEach(function(c){
+      h+='<button class="ab full" style="margin-bottom:4px;text-align:left;font-size:.78rem" onclick="saveTgChatId(\''+c.id+'\')">'
+        +c.title+' <span style="color:var(--mt);font-size:.7rem">('+c.type+': '+c.id+')</span></button>';
+    });
+    out.innerHTML=h;
+  })
+  .catch(function(err){
+    btn.textContent='Detect chats from bot';btn.disabled=false;
+    out.innerHTML='<div style="color:#a32d2d;font-size:.8rem">Error: '+err.message+'</div>';
+  });
+}
+function sendReminder(){
+  var chatId=getTgChatId();
+  if(!chatId){
+    document.getElementById('tg-result').innerHTML='<span style="color:#a32d2d">Please enter a Chat ID first. Use the Detect button or paste it manually.</span>';
+    return;
+  }
+  saveTgChatId(chatId);
+  var btn=document.getElementById('tg-send-btn');
+  btn.textContent='Sending...';btn.disabled=true;
+  var d=getDayInfo(aDay);
+  var dm=dayMeals(aDay);
+  var hm=home(aDay);
+  var dmVoters=[];
+  dm.forEach(function(m){(dayData[aDay].votes[m.id]||{voters:[]}).voters.forEach(function(v){if(!dmVoters.includes(v))dmVoters.push(v);});});
+  var notVoted=hm.filter(function(m){return!dmVoters.includes(m.name);});
+  var msg='🍽 <b>Family Dinner Board Reminder</b>\n\n';
+  msg+='<b>'+d.dayName+', '+d.month+' '+d.date+'</b>\n\n';
+  if(dm.length){
+    msg+='Tonight\'s options:\n';
+    dm.forEach(function(m){
+      var v=(dayData[aDay].votes[m.id]||{voters:[]}).voters.length;
+      msg+='• '+m.name+' ('+v+' vote'+(v!==1?'s':'')+')\n';
+    });
+  }
+  if(notVoted.length){
+    msg+='\n⏳ Still waiting on: '+notVoted.map(function(m){return m.name;}).join(', ')+'\n';
+  }
+  msg+='\nHead to the Family Dinner Board to cast your vote!';
+  fetch('/.netlify/functions/send-reminder',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:chatId,message:msg})
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.textContent='Send dinner reminder';btn.disabled=false;
+    if(data.success){
+      document.getElementById('tg-result').innerHTML='<span style="color:#2e7d32">✓ Reminder sent successfully!</span>';
+    } else {
+      document.getElementById('tg-result').innerHTML='<span style="color:#a32d2d">Error: '+data.error+'</span>';
+    }
+    setTimeout(function(){var r=document.getElementById('tg-result');if(r)r.innerHTML='';},5000);
+  })
+  .catch(function(err){
+    btn.textContent='Send dinner reminder';btn.disabled=false;
+    document.getElementById('tg-result').innerHTML='<span style="color:#a32d2d">Error: '+err.message+'</span>';
+  });
+}
+
 // ── EVENT LISTENERS ──
 document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doUnlock();});
 document.getElementById('sug-name').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('sug-desc').focus();});
@@ -849,7 +960,7 @@ document.getElementById('ldg').style.display='none';
 document.getElementById('app').style.display='block';
 document.getElementById('stxt').textContent='Ready \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
 document.getElementById('dot').classList.add('ok');
-rAll();
+rAll(true);
 </script>
 </body>
 </html>
