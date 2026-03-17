@@ -174,6 +174,11 @@ input:checked+.tsl{background:var(--b)}
 input:checked+.tsl::before{transform:translateX(20px)}
 .rall{width:100%;margin-top:.6rem;background:var(--cbg);border:1px solid var(--cb);border-radius:var(--rs);padding:10px;cursor:pointer;font-size:.82rem;color:var(--mt);font-family:'Lato',sans-serif;min-height:44px}
 .rall:active{background:#f0d9c0;color:var(--b)}
+.sch-day{margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid #f5f0e8}
+.sch-fam{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:4px 0 2px}
+.sch-lbl{font-size:.7rem;color:var(--mt);font-style:italic}
+.sch-chip{font-size:.7rem;padding:3px 8px;border-radius:10px;border:1px solid var(--gbd);background:var(--gb);color:var(--gt);cursor:pointer;font-family:'Lato',sans-serif;min-height:28px}
+.sch-chip.working{background:var(--ob);color:var(--ot);border-color:var(--obd);text-decoration:line-through}
 .dbnote{font-size:.7rem;color:var(--mt);text-align:center;margin-top:5px;font-style:italic}
 .sync-bar{background:#fff3e0;border:1px solid #ffcc80;border-radius:var(--rs);padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:#e65100;text-align:center;display:none}
 .sync-bar.ok{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32}
@@ -298,6 +303,7 @@ input:checked+.tsl::before{transform:translateX(20px)}
           <div class="atab" onclick="aTab('sch')">Schedule</div>
           <div class="atab" onclick="aTab('vot')">Votes</div>
           <div class="atab" onclick="aTab('tg')">Reminders</div>
+          <div class="atab" onclick="aTab('gcal')">Calendar</div>
         </div>
         <div class="asec on" id="asec-menu">
           <div class="albl">Master meal list</div>
@@ -330,10 +336,14 @@ input:checked+.tsl::before{transform:translateX(20px)}
           <div class="albl">Add a member</div>
           <input class="ainp" id="fn" placeholder="Name (e.g. Amber)"/>
           <input class="ainp" id="fk" placeholder="Work keyword (e.g. Amber work)"/>
+          <input class="ainp" id="fc" placeholder="Personal Google Calendar ID (optional)"/>
+          <div style="font-size:.72rem;color:var(--mt);margin-bottom:.6rem;font-style:italic">
+            If this member has their own Google Calendar, paste their Calendar ID here. Any event on their calendar during 4&ndash;11:59 PM will automatically block them from voting &mdash; no keyword matching needed.
+          </div>
           <button class="ab full" onclick="addFam()">Add Member</button>
         </div>
         <div class="asec" id="asec-sch">
-          <div class="albl">Toggle cooking days on / off</div>
+          <div class="albl">Toggle cooking days on / off & mark who's working</div>
           <div id="sch-list"></div>
         </div>
         <div class="asec" id="asec-vot">
@@ -354,6 +364,32 @@ input:checked+.tsl::before{transform:translateX(20px)}
           <div id="tg-result" style="margin-top:.5rem;font-size:.8rem"></div>
           <div class="dbnote" style="margin-top:.75rem">Chat ID is saved to this device only</div>
         </div>
+        <div class="asec" id="asec-gcal">
+          <div class="albl">Google Calendar Integration</div>
+          <div style="font-size:.8rem;color:var(--br);margin-bottom:.75rem;line-height:1.5">
+            Connect a Google Calendar to automatically block family members from voting when they have work shifts that overlap with <strong>5:00 PM or later</strong>.
+          </div>
+          <div class="albl">Google Calendar ID</div>
+          <input class="ainp" id="gcal-id" placeholder="e.g. your-calendar@group.calendar.google.com"/>
+          <div style="font-size:.72rem;color:var(--mt);margin-bottom:.6rem;font-style:italic">
+            Find this in Google Calendar &rarr; Settings &rarr; your calendar &rarr; "Integrate calendar" &rarr; Calendar ID. The calendar must be set to public with <strong>"See all event details"</strong> (not just "See free/busy") under "Access permissions for events".
+          </div>
+          <div class="albl">Google API Key</div>
+          <input class="ainp" id="gcal-apikey" placeholder="AIza... (or set GOOGLE_CALENDAR_API_KEY env var)"/>
+          <div style="font-size:.72rem;color:var(--mt);margin-bottom:.6rem;font-style:italic">
+            Create one at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color:var(--g)">Google Cloud Console</a> with the Google Calendar API enabled. Leave blank if you set GOOGLE_CALENDAR_API_KEY as a Netlify env variable.
+          </div>
+          <div class="albl">Keyword Matching</div>
+          <div style="font-size:.8rem;color:var(--br);margin-bottom:.75rem;line-height:1.5">
+            <strong>Shared calendar:</strong> Events are matched to family members using their <strong>work keyword</strong> or <strong>name</strong> (set in the Family tab). If an event title contains a member's name and the word &quot;work&quot;, and the shift extends past 5 PM, that member is automatically marked as working.<br>
+            <strong>Personal calendars:</strong> You can also set a Google Calendar ID per member in the Family tab. Any event on their personal calendar that extends past 5 PM will automatically block them &mdash; no keyword matching needed.
+          </div>
+          <button class="ab full" onclick="saveGcalSettings()" style="margin-bottom:8px">Save Calendar Settings</button>
+          <button class="ab full" style="background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32" onclick="syncGoogleCalendar()" id="gcal-sync-btn">Sync from Google Calendar now</button>
+          <div id="gcal-result" style="margin-top:.5rem;font-size:.8rem"></div>
+          <div id="gcal-preview" style="margin-top:.75rem"></div>
+          <div class="dbnote" style="margin-top:.75rem">Calendar settings are shared with all devices. Sync updates the working status for all 14 days.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -363,7 +399,7 @@ input:checked+.tsl::before{transform:translateX(20px)}
 // CONFIG
 // ══════════════════════════════════════════════
 var ADMIN_PW = 'dinner123'; // Change before sharing!
-var WS = 19, WE = 24;       // Work window: 7pm–midnight
+var WS = 16, WE = 24;       // Work window: 4pm–11:59pm
 var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var DAYSFULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -402,10 +438,10 @@ var DM = [
   {id:5,name:"Beef Pot Roast",desc:"Slow-cooked with potatoes and carrots",link:''}
 ];
 var DF = [
-  {id:1,name:"Aaliyah",kw:"Aaliyah - Work"},
-  {id:3,name:"Carly",kw:"Carly work"},{id:4,name:"Jackson",kw:"Jack work / Jackson work"},
-  {id:5,name:"Reese",kw:"Reese work"},{id:6,name:"Tyler",kw:"Tyler work"},
-  {id:7,name:"Amber",kw:"Amber work"},{id:8,name:"Ace",kw:"Ace work"}
+  {id:1,name:"Aaliyah",kw:"Aaliyah - Work",gcalId:''},
+  {id:3,name:"Carly",kw:"Carly work",gcalId:''},{id:4,name:"Jackson",kw:"Jack work / Jackson work",gcalId:''},
+  {id:5,name:"Reese",kw:"Reese work",gcalId:''},{id:6,name:"Tyler",kw:"Tyler work",gcalId:''},
+  {id:7,name:"Amber",kw:"Amber work",gcalId:''},{id:8,name:"Ace",kw:"Ace work",gcalId:''}
 ];
 var DI = {
   "Mama's Lasagna":[{n:"Ground beef",q:"1 lb"},{n:"Lasagna noodles",q:"12 sheets"},{n:"Ricotta cheese",q:"15 oz"},{n:"Mozzarella cheese",q:"2 cups"},{n:"Marinara sauce",q:"24 oz"},{n:"Eggs",q:"2"},{n:"Parmesan cheese",q:"1/2 cup"},{n:"Garlic",q:"4 cloves"},{n:"Italian seasoning",q:"1 tbsp"}],
@@ -439,7 +475,7 @@ function saveAll(){
   // Save per-date vote+schedule data
   WD.forEach(function(d){
     if(dayData[d.iso]){
-      sv('day_'+d.iso,{open:dayData[d.iso].open,votes:dayData[d.iso].votes});
+      sv('day_'+d.iso,{open:dayData[d.iso].open,away:dayData[d.iso].away||[],votes:dayData[d.iso].votes});
     }
   });
   flash();
@@ -452,7 +488,7 @@ function loadAll(){
   else{meals=DM.map(function(x){return Object.assign({},x);});nMeal=10;}
   // Family
   var f=ld('fam',null);
-  if(f){fam=f.fam;nFam=f.nFam;}
+  if(f){fam=f.fam.map(function(x){if(!x.gcalId)x.gcalId='';if(!x.kw)x.kw=x.name+' work';return x;});nFam=f.nFam;}
   else{fam=DF.map(function(x){return Object.assign({},x);});nFam=10;}
   // Suggestions
   var s=ld('sugs',null);
@@ -476,6 +512,7 @@ function loadAll(){
     var saved=ld('day_'+d.iso,null);
     if(saved){
       dayData[d.iso].open=saved.open!==undefined?saved.open:true;
+      dayData[d.iso].away=saved.away||[];
       meals.forEach(function(m){dayData[d.iso].votes[m.id]=saved.votes&&saved.votes[m.id]?saved.votes[m.id]:{voters:[]};});
     }
     // Init day menu if missing
@@ -486,6 +523,8 @@ function loadAll(){
       if(!dayMenus[d.iso].newMealIds)dayMenus[d.iso].newMealIds=[];
     }
   });
+  // Apply every-other-week away for Ace, Tyler, Aaliyah
+  applyEveryOtherWeekAway();
   // Purge stale day storage (older than 20 days)
   var cutoff=new Date(today);
   cutoff.setDate(cutoff.getDate()-20);
@@ -499,6 +538,51 @@ function loadAll(){
 }
 
 function flash(){var e=document.getElementById('sv');e.classList.add('show');setTimeout(function(){e.classList.remove('show');},1500);}
+
+// ── EVERY-OTHER-WEEK AWAY ──
+// Ace, Tyler, Aaliyah are gone every other week starting Mon Mar 23, 2026
+// Away weeks: Mar 23–29, Apr 6–12, Apr 20–26, etc.
+// Back weeks: Mar 30–Apr 5, Apr 13–19, etc.
+var EOW_AWAY_IDS = [1, 6, 8]; // Aaliyah=1, Tyler=6, Ace=8
+var EOW_REF_MONDAY = new Date(2026, 2, 23); // March 23, 2026 (first away week Monday)
+EOW_REF_MONDAY.setHours(0,0,0,0);
+
+function isEveryOtherWeekAway(iso) {
+  var d = new Date(iso + 'T12:00:00'); // noon to avoid timezone edge cases
+  // Find the Monday of this date's week (Mon=1, Sun=0→treat as 7)
+  var dow = d.getDay(); // 0=Sun
+  var diffToMon = (dow === 0) ? -6 : 1 - dow; // days to subtract to get Monday
+  var monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMon);
+  monday.setHours(0,0,0,0);
+  // Calculate weeks between this Monday and the reference Monday
+  var diffMs = monday.getTime() - EOW_REF_MONDAY.getTime();
+  var diffWeeks = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+  // Even weeks (0, 2, 4...) from reference = away; odd = home
+  return (diffWeeks % 2 === 0) && diffWeeks >= 0;
+}
+
+function applyEveryOtherWeekAway() {
+  WD.forEach(function(d) {
+    if (!dayData[d.iso]) dayData[d.iso] = {open: true, away: [], votes: {}};
+    if (isEveryOtherWeekAway(d.iso)) {
+      EOW_AWAY_IDS.forEach(function(id) {
+        if (!dayData[d.iso].away.includes(id)) {
+          dayData[d.iso].away.push(id);
+          // Remove any votes from members who are now away
+          var m = fam.find(function(x) { return x.id === id; });
+          if (m) {
+            meals.forEach(function(ml) {
+              if (dayData[d.iso].votes[ml.id]) {
+                dayData[d.iso].votes[ml.id].voters = dayData[d.iso].votes[ml.id].voters.filter(function(n) { return n !== m.name; });
+              }
+            });
+          }
+        }
+      });
+    }
+  });
+}
 
 // ── HELPERS ──
 function cu(s){if(!s)return'';var t=s.trim();return t.startsWith('http')?t:'https://'+t;}
@@ -528,7 +612,15 @@ function rWho(){
     c.innerHTML+='<button class="wc'+(ia2?' on':'')+(ia?' aw':'')+'" onclick="'+(ia?'':'setU(\''+m.name+'\')')+'">'+m.name+'</button>';
   });
   var an=fam.filter(function(m){return aw.includes(m.id);}).map(function(m){return m.name;});
-  if(an.length){n.style.display='block';n.textContent=an.join(', ')+(an.length===1?' is':' are')+' working 7pm\u2013midnight \u2014 excluded tonight';}
+  if(an.length){
+    // Separate EOW away from work away
+    var eowNames=fam.filter(function(m){return aw.includes(m.id)&&EOW_AWAY_IDS.includes(m.id)&&isEveryOtherWeekAway(aDay);}).map(function(m){return m.name;});
+    var workNames=an.filter(function(n){return eowNames.indexOf(n)<0;});
+    var parts=[];
+    if(eowNames.length)parts.push(eowNames.join(', ')+(eowNames.length===1?' is':' are')+' gone this week \u2014 excluded from voting');
+    if(workNames.length)parts.push(workNames.join(', ')+(workNames.length===1?' is':' are')+' working 4pm\u201311:59pm \u2014 excluded from voting');
+    n.style.display='block';n.textContent=parts.join(' \u00B7 ');
+  }
   else n.style.display='none';
 }
 function setU(n){cUser=cUser===n?null:n;rWho();rDay();}
@@ -592,7 +684,13 @@ function rDay(){
     +'</div>'
     +'<div class="stitle"><span>Choose Your Dinner</span></div>';
   if(!cUser)h+='<div class="novote">Tap your name above to cast your vote</div>';
-  else if(ua)h+='<div class="workmsg">'+cUser+' is working 7pm\u2013midnight \u2014 no vote needed!</div>';
+  else if(ua){
+    var um=fam.find(function(x){return x.name===cUser;});
+    if(um&&EOW_AWAY_IDS.includes(um.id)&&isEveryOtherWeekAway(aDay))
+      h+='<div class="workmsg">'+cUser+' is gone this week \u2014 no vote needed!</div>';
+    else
+      h+='<div class="workmsg">'+cUser+' is working 4pm\u201311:59pm \u2014 no vote needed!</div>';
+  }
   if(dm.length===0){
     h+='<div class="nomeals">No meals set for '+d.dayName+' '+d.month+' '+d.date+' yet \u2014 check back soon!</div>';
   } else {
@@ -712,10 +810,11 @@ function doUnlock(){
   else e.style.display='block';
 }
 function aTab(t){
-  document.querySelectorAll('.atab').forEach(function(e,i){e.classList.toggle('on',['menu','daymenu','reqs','sugs','fam','sch','vot','tg'][i]===t);});
+  document.querySelectorAll('.atab').forEach(function(e,i){e.classList.toggle('on',['menu','daymenu','reqs','sugs','fam','sch','vot','tg','gcal'][i]===t);});
   document.querySelectorAll('.asec').forEach(function(e){e.classList.remove('on');});
   document.getElementById('asec-'+t).classList.add('on');rAdm();
   if(t==='tg')loadTgSetup();
+  if(t==='gcal')loadGcalSettings();
 }
 
 // ── DAY MENU CONTROLS ──
@@ -801,15 +900,24 @@ function rAdm(){
 
   // FAMILY
   var fl=document.getElementById('fam-list');fl.innerHTML='';
-  fam.forEach(function(m){fl.innerHTML+='<div class="ritem"><div class="rlbl">'+m.name+'<br><span class="rsub">'+m.kw+'</span></div><button class="delbtn" onclick="delFam('+m.id+')">\u2715</button></div>';});
+  fam.forEach(function(m){fl.innerHTML+='<div class="ritem"><div class="rlbl">'+m.name+'<br><span class="rsub">keyword: <strong>'+m.kw+'</strong>'+(m.gcalId?' &middot; <span style="color:var(--g)">personal cal linked</span>':'')+'</span></div><button class="delbtn" onclick="delFam('+m.id+')">\u2715</button></div>';});
 
-  // SCHEDULE — 14 days
+  // SCHEDULE — 14 days with per-member work toggles
   var dl=document.getElementById('sch-list');dl.innerHTML='';
   WD.forEach(function(d){
     var open=dayData[d.iso]?dayData[d.iso].open:true;
+    var aw=dayData[d.iso]?dayData[d.iso].away:[];
     var dayLabel=d.dayName+' '+d.month+' '+d.date+(d.isToday?' \u2013 Today':'');
-    dl.innerHTML+='<div class="ritem"><span class="rlbl">'+dayLabel+'</span>'
-      +'<label class="tsw"><input type="checkbox" '+(open?'checked':'')+' onchange="togDay(\''+d.iso+'\',this.checked)"/><span class="tsl"></span></label></div>';
+    var famChips=fam.map(function(m){
+      var isWorking=aw.includes(m.id);
+      return '<button class="sch-chip'+(isWorking?' working':'')+'" onclick="togAway(\''+d.iso+'\','+m.id+')">'
+        +m.name+(isWorking?' \u2715':'')+'</button>';
+    }).join('');
+    dl.innerHTML+='<div class="sch-day">'
+      +'<div class="ritem"><span class="rlbl">'+dayLabel+'</span>'
+      +'<label class="tsw"><input type="checkbox" '+(open?'checked':'')+' onchange="togDay(\''+d.iso+'\',this.checked)"/><span class="tsl"></span></label></div>'
+      +'<div class="sch-fam"><span class="sch-lbl">Working:</span>'+famChips+'</div>'
+      +'</div>';
   });
 
   // VOTES — 14 days
@@ -876,9 +984,22 @@ function delMeal(id){
   });
   rAll();saveAll();
 }
-function addFam(){var n=document.getElementById('fn').value.trim(),k=document.getElementById('fk').value.trim();if(!n)return;fam.push({id:nFam++,name:n,kw:k||n+' work'});document.getElementById('fn').value='';document.getElementById('fk').value='';rAll();saveAll();}
-function delFam(id){var m=fam.find(function(m){return m.id===id;});if(m&&m.name===cUser)cUser=null;fam=fam.filter(function(m){return m.id!==id;});rAll();saveAll();}
-function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;rAll();saveAll();}
+function addFam(){var n=document.getElementById('fn').value.trim(),k=document.getElementById('fk').value.trim(),c=document.getElementById('fc')?document.getElementById('fc').value.trim():'';if(!n)return;fam.push({id:nFam++,name:n,kw:k||n+' work',gcalId:c||''});document.getElementById('fn').value='';document.getElementById('fk').value='';if(document.getElementById('fc'))document.getElementById('fc').value='';rAll();saveAll();syncToServer();}
+function delFam(id){var m=fam.find(function(m){return m.id===id;});if(m&&m.name===cUser)cUser=null;fam=fam.filter(function(m){return m.id!==id;});rAll();saveAll();syncToServer();}
+function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;rAll();saveAll();syncToServer();}
+function togAway(iso,famId){
+  if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};
+  // Prevent un-blocking every-other-week members during their away week
+  if(EOW_AWAY_IDS.includes(famId)&&isEveryOtherWeekAway(iso)){
+    var alreadyAway=dayData[iso].away.indexOf(famId)>=0;
+    if(alreadyAway)return; // can't toggle off during away week
+  }
+  var aw=dayData[iso].away,i=aw.indexOf(famId);
+  if(i>=0)aw.splice(i,1);else aw.push(famId);
+  // Remove votes from members who are now away
+  if(i<0){var m=fam.find(function(x){return x.id===famId;});if(m){meals.forEach(function(ml){if(dayData[iso].votes[ml.id])dayData[iso].votes[ml.id].voters=dayData[iso].votes[ml.id].voters.filter(function(n){return n!==m.name;});});}}
+  rAll();saveAll();syncToServer();
+}
 function rstDay(iso){if(!dayData[iso])return;meals.forEach(function(m){dayData[iso].votes[m.id]={voters:[]};});rAll();saveAll();}
 function rstAll(){WD.forEach(function(d){rstDay(d.iso);});}
 
@@ -953,7 +1074,7 @@ function sendReminder(){
   if(notVoted.length){
     msg+='\n⏳ Still waiting on: '+notVoted.map(function(m){return m.name;}).join(', ')+'\n';
   }
-  msg+='\nHead to the Family Dinner Board to cast your vote!';
+  msg+='\n<a href="'+window.location.origin+'">Vote on the Family Dinner Board</a>';
   fetch('/.netlify/functions/send-reminder',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -973,6 +1094,290 @@ function sendReminder(){
     btn.textContent='Send dinner reminder';btn.disabled=false;
     document.getElementById('tg-result').innerHTML='<span style="color:#a32d2d">Error: '+err.message+'</span>';
   });
+}
+
+// ── GOOGLE CALENDAR INTEGRATION ──
+function loadGcalSettings(){
+  var idEl=document.getElementById('gcal-id');
+  var keyEl=document.getElementById('gcal-apikey');
+  var savedId=ld('gcalId','');
+  var savedKey=ld('gcalApiKey','');
+  if(idEl&&!idEl.value&&savedId)idEl.value=savedId;
+  if(keyEl&&!keyEl.value&&savedKey)keyEl.value=savedKey;
+}
+function saveGcalSettings(){
+  var idEl=document.getElementById('gcal-id');
+  var keyEl=document.getElementById('gcal-apikey');
+  var calId=idEl?idEl.value.trim():'';
+  var calKey=keyEl?keyEl.value.trim():'';
+  sv('gcalId',calId);
+  sv('gcalApiKey',calKey);
+  // Also save to server so all devices can auto-sync calendar
+  fetch('/.netlify/functions/save-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gcalSettings:{calendarId:calId,apiKey:calKey}})}).catch(function(){});
+  var res=document.getElementById('gcal-result');
+  if(res)res.innerHTML='<span style="color:#2e7d32">\u2713 Calendar settings saved for all devices</span>';
+  setTimeout(function(){if(res)res.innerHTML='';},3000);
+}
+function getGcalSettings(){
+  var idEl=document.getElementById('gcal-id');
+  var keyEl=document.getElementById('gcal-apikey');
+  return {
+    calendarId:(idEl&&idEl.value.trim())||ld('gcalId',''),
+    apiKey:(keyEl&&keyEl.value.trim())||ld('gcalApiKey','')
+  };
+}
+function syncGoogleCalendar(){
+  var settings=getGcalSettings();
+  var memberCals=fam.filter(function(m){return m.gcalId;});
+  if(!settings.calendarId&&!memberCals.length){
+    var res=document.getElementById('gcal-result');
+    if(res)res.innerHTML='<span style="color:#a32d2d">Please enter a Google Calendar ID (shared or per-member in the Family tab).</span>';
+    return;
+  }
+  var btn=document.getElementById('gcal-sync-btn');
+  if(btn){btn.textContent='Syncing...';btn.disabled=true;}
+  var promises=[];
+  // Fetch from shared calendar if configured
+  if(settings.calendarId){
+    var reqBody={calendarId:settings.calendarId};
+    if(settings.apiKey)reqBody.apiKey=settings.apiKey;
+    promises.push(
+      fetch('/.netlify/functions/google-calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)})
+      .then(function(r){return r.json();})
+      .then(function(data){return {type:'shared',events:data.events||[],error:data.error||null};})
+      .catch(function(err){return {type:'shared',events:[],error:err.message};})
+    );
+  }
+  // Fetch from each member's personal calendar
+  memberCals.forEach(function(m){
+    var reqBody={calendarId:m.gcalId};
+    if(settings.apiKey)reqBody.apiKey=settings.apiKey;
+    promises.push(
+      fetch('/.netlify/functions/google-calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var evs=(data.events||[]).map(function(ev){ev.memberId=m.id;ev.memberName=m.name;return ev;});
+        return {type:'member',memberName:m.name,events:evs,error:data.error||null};
+      })
+      .catch(function(err){return {type:'member',memberName:m.name,events:[],error:err.message};})
+    );
+  });
+  Promise.all(promises).then(function(results){
+    if(btn){btn.textContent='Sync from Google Calendar now';btn.disabled=false;}
+    var allEvents=[],errors=[];
+    results.forEach(function(r){
+      if(r.error)errors.push((r.memberName?r.memberName+': ':'')+r.error);
+      allEvents=allEvents.concat(r.events);
+    });
+    var matched=applyCalendarEvents(allEvents);
+    var res=document.getElementById('gcal-result');
+    if(errors.length){
+      if(res)res.innerHTML='<span style="color:#a32d2d">Errors: '+errors.join('; ')+'</span>';
+    } else {
+      var noTitles=allEvents.filter(function(e){return !e.summary;}).length;
+      var msg='\u2713 Synced '+allEvents.length+' events. '+matched+' work shift'+(matched!==1?'s':'')+' matched to family members.';
+      if(noTitles>0&&noTitles>=allEvents.length*0.5){
+        msg+=' \u26a0 '+noTitles+' events have hidden titles \u2014 check calendar sharing settings below.';
+      }
+      if(res)res.innerHTML='<span style="color:'+(noTitles>=allEvents.length*0.5?'#b8860b':'#2e7d32')+'">'+msg+'</span>';
+    }
+    showCalendarPreview(allEvents);
+    setTimeout(function(){if(res)res.innerHTML='';},8000);
+  });
+}
+function applyCalendarEvents(events){
+  var matched=0;
+  // For each day in the 14-day window, check if any "[name] work" events
+  // overlap with 5PM+ (end time >= 17:00) and block that family member
+  WD.forEach(function(d){
+    if(!dayData[d.iso])dayData[d.iso]={open:true,away:[],votes:{}};
+    var calAway=[];
+    events.forEach(function(ev){
+      if(!ev.start)return;
+      var evStart=new Date(ev.start);
+      var evEnd=new Date(ev.end||ev.start);
+      // Handle invalid dates
+      if(isNaN(evStart.getTime()))return;
+      if(isNaN(evEnd.getTime()))evEnd=new Date(evStart.getTime()+3600000); // default 1hr
+      // Check if this event falls on this day (use local date of event start)
+      var evDateStr=evStart.getFullYear()+'-'+String(evStart.getMonth()+1).padStart(2,'0')+'-'+String(evStart.getDate()).padStart(2,'0');
+      // For all-day events (date-only strings without 'T'), check if the date matches
+      var isAllDay=typeof ev.start==='string'&&ev.start.indexOf('T')<0;
+      // Only match work events that overlap with the dinner window (5PM+)
+      var evOnThisDay=false;
+      var overlapsWindow=false;
+      if(isAllDay){
+        // All-day events: skip (they don't have a specific time)
+        evOnThisDay=false;
+      } else {
+        // Check if event falls on this day
+        evOnThisDay=(evDateStr===d.iso);
+        // Check if the event OVERLAPS with 5PM+ (i.e., ends after 5PM)
+        if(evOnThisDay){
+          var endHour=evEnd.getHours();
+          var endMin=evEnd.getMinutes();
+          overlapsWindow=(endHour>=17||(endHour===0&&endMin===0)); // ends at or after 5PM (midnight = next day boundary also counts)
+        }
+      }
+      if(evOnThisDay&&overlapsWindow){
+        // Only match events where title contains BOTH the person's name AND the word "work"
+        var title=(ev.summary||'').toLowerCase().trim();
+        var hasWork=title.indexOf('work')>=0;
+        if(hasWork){
+          fam.forEach(function(m){
+            var nameLower=m.name.toLowerCase().trim();
+            // Check if this member's name appears in the event title
+            var nameInTitle=nameLower&&title.indexOf(nameLower)>=0;
+            // Also check common short names (e.g., "Jack" for "Jackson")
+            var keywords=m.kw?m.kw.split('/').map(function(k){return k.trim().toLowerCase();}).filter(function(k){return k.length>0;}):[];
+            var kwNameMatch=keywords.some(function(kw){
+              // Extract the name part from keyword like "carly work" → "carly"
+              var kwName=kw.replace(/\s*work\s*/gi,'').trim();
+              return kwName&&title.indexOf(kwName)>=0;
+            });
+            if((nameInTitle||kwNameMatch)&&!calAway.includes(m.id)){
+              calAway.push(m.id);
+              matched++;
+            }
+          });
+        }
+      }
+    });
+    // Merge calendar away with any existing manual away entries
+    calAway.forEach(function(id){
+      if(!dayData[d.iso].away.includes(id)){
+        dayData[d.iso].away.push(id);
+        // Remove votes from members who are now away
+        var m=fam.find(function(x){return x.id===id;});
+        if(m){meals.forEach(function(ml){if(dayData[d.iso].votes[ml.id])dayData[d.iso].votes[ml.id].voters=dayData[d.iso].votes[ml.id].voters.filter(function(n){return n!==m.name;});});}
+      }
+    });
+  });
+  // Also re-apply every-other-week away after calendar events
+  applyEveryOtherWeekAway();
+  saveAll();rAll();syncToServer();
+  return matched;
+}
+function showCalendarPreview(events){
+  var prev=document.getElementById('gcal-preview');
+  if(!prev)return;
+  if(!events.length){prev.innerHTML='<div style="font-size:.8rem;color:var(--mt);font-style:italic">No events found in the next 14 days.</div>';return;}
+  // Detect if most events are missing titles (calendar sharing issue)
+  var noTitleCount=events.filter(function(e){return !e.summary;}).length;
+  var h='<div style="font-size:.7rem;color:var(--mt);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Calendar Events Found</div>';
+  if(noTitleCount>0&&noTitleCount>=events.length*0.5){
+    h+='<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:.8rem;color:#856404">'
+      +'<strong>Event titles are hidden.</strong> Your Google Calendar sharing is likely set to &quot;See only free/busy&quot;. '
+      +'To fix this: open Google Calendar &rarr; Settings &rarr; your calendar &rarr; &quot;Access permissions for events&quot; &rarr; change &quot;Make available to public&quot; to <strong>&quot;See all event details&quot;</strong>. '
+      +'Without event titles, the app cannot match events to family members.</div>';
+  }
+  // Group events by date using local date of the start time
+  var byDate={};
+  events.forEach(function(ev){
+    if(!ev.start)return;
+    var isAllDay=typeof ev.start==='string'&&ev.start.indexOf('T')<0;
+    var dt;
+    if(isAllDay){
+      dt=ev.start;
+    } else {
+      var sd=new Date(ev.start);
+      if(!isNaN(sd.getTime())){
+        dt=sd.getFullYear()+'-'+String(sd.getMonth()+1).padStart(2,'0')+'-'+String(sd.getDate()).padStart(2,'0');
+      } else {
+        dt=ev.start.slice(0,10);
+      }
+    }
+    if(!byDate[dt])byDate[dt]=[];
+    byDate[dt].push(ev);
+  });
+  WD.forEach(function(d){
+    var dayEvents=byDate[d.iso];
+    if(!dayEvents)return;
+    h+='<div style="margin-bottom:8px"><div style="font-size:.8rem;font-weight:700;color:var(--b)">'+d.dayName+' '+d.month+' '+d.date+'</div>';
+    dayEvents.forEach(function(ev){
+      var startTime='';
+      if(ev.start&&ev.start.indexOf('T')>=0){
+        var sd=new Date(ev.start);
+        startTime=sd.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+      }
+      var endTime='';
+      if(ev.end&&ev.end.indexOf('T')>=0){
+        var ed=new Date(ev.end);
+        endTime=ed.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+      }
+      var timeStr=startTime?(startTime+(endTime?' \u2013 '+endTime:'')):'All day';
+      // Check if it matched any member (name + "work" in title, event overlaps 5PM+)
+      var matchedNames=[];
+      var title=(ev.summary||'').toLowerCase().trim();
+      var hasWork=title.indexOf('work')>=0;
+      // Check if event end time extends past 5PM (overlaps with dinner window)
+      var evStartForPreview=ev.start&&ev.start.indexOf('T')>=0?new Date(ev.start):null;
+      var evEndForPreview=ev.end&&ev.end.indexOf('T')>=0?new Date(ev.end):null;
+      if(!evEndForPreview&&evStartForPreview)evEndForPreview=new Date(evStartForPreview.getTime()+3600000);
+      var overlapsWindowPreview=false;
+      if(evEndForPreview&&!isNaN(evEndForPreview.getTime())){
+        var previewEndHour=evEndForPreview.getHours();
+        var previewEndMin=evEndForPreview.getMinutes();
+        overlapsWindowPreview=(previewEndHour>=17||(previewEndHour===0&&previewEndMin===0));
+      }
+      if(hasWork&&overlapsWindowPreview){
+        fam.forEach(function(m){
+          var nameLower=m.name.toLowerCase().trim();
+          var nameInTitle=nameLower&&title.indexOf(nameLower)>=0;
+          var keywords=m.kw?m.kw.split('/').map(function(k){return k.trim().toLowerCase();}).filter(function(k){return k.length>0;}):[];
+          var kwNameMatch=keywords.some(function(kw){
+            var kwName=kw.replace(/\s*work\s*/gi,'').trim();
+            return kwName&&title.indexOf(kwName)>=0;
+          });
+          if(nameInTitle||kwNameMatch)matchedNames.push(m.name);
+        });
+      }
+      var memberTag=ev.memberName?' <span style="font-size:.7rem;color:var(--g)">['+ev.memberName+'\'s cal]</span>':'';
+      var displayTitle=ev.summary||(ev.description?ev.description.slice(0,50):'(no title)');
+      var matchTag=matchedNames.length?'<span style="color:var(--ot);font-weight:700"> \u2192 '+matchedNames.join(', ')+' blocked</span>':'<span style="color:var(--mt)"> (no match)</span>';
+      h+='<div style="font-size:.78rem;color:var(--br);padding:2px 0">'+displayTitle+' <span style="color:var(--mt)">'+timeStr+'</span>'+memberTag+matchTag+'</div>';
+    });
+    h+='</div>';
+  });
+  prev.innerHTML=h;
+}
+
+// Auto-sync calendar on page load if settings exist
+function autoSyncCalendar(){
+  var calId=ld('gcalId','');
+  var apiKey=ld('gcalApiKey','');
+  var memberCals=fam.filter(function(m){return m.gcalId;});
+  if(!calId&&!memberCals.length)return;
+  var promises=[];
+  // Fetch from shared calendar
+  if(calId){
+    var reqBody={calendarId:calId};
+    if(apiKey)reqBody.apiKey=apiKey;
+    promises.push(
+      fetch('/.netlify/functions/google-calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)})
+      .then(function(r){return r.json();})
+      .then(function(data){return {events:data.events||[],error:data.error||null};})
+      .catch(function(){return {events:[]};})
+    );
+  }
+  // Fetch from per-member calendars
+  memberCals.forEach(function(m){
+    var reqBody={calendarId:m.gcalId};
+    if(apiKey)reqBody.apiKey=apiKey;
+    promises.push(
+      fetch('/.netlify/functions/google-calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        return {events:(data.events||[]).map(function(ev){ev.memberId=m.id;ev.memberName=m.name;return ev;})};
+      })
+      .catch(function(){return {events:[]};})
+    );
+  });
+  Promise.all(promises).then(function(results){
+    var allEvents=[];
+    results.forEach(function(r){allEvents=allEvents.concat(r.events||[]);});
+    if(allEvents.length)applyCalendarEvents(allEvents);
+  }).catch(function(){/* silently ignore auto-sync errors */});
 }
 
 // ── SERVER SYNC (Netlify Blobs) ──
@@ -1007,7 +1412,8 @@ function syncToServer() {
       ings: ings,
       reqs: reqs, nReq: nReq,
       sugs: sugs, nSug: nSug,
-      dayData: serverDayData
+      dayData: serverDayData,
+      gcalSettings: {calendarId: ld('gcalId',''), apiKey: ld('gcalApiKey','')}
     })
   })
   .then(function(r) {
@@ -1055,7 +1461,7 @@ function loadFromServer() {
     }
     // Family
     if (data.fam && data.fam.fam) {
-      fam = data.fam.fam;
+      fam = data.fam.fam.map(function(x){if(!x.gcalId)x.gcalId='';if(!x.kw)x.kw=x.name+' work';return x;});
       nFam = data.fam.nFam || 100;
     }
     // Day Menus
@@ -1092,6 +1498,16 @@ function loadFromServer() {
         }
       });
     }
+    // Google Calendar settings (shared across all devices)
+    if (data.gcalSettings) {
+      if (data.gcalSettings.calendarId) sv('gcalId', data.gcalSettings.calendarId);
+      if (data.gcalSettings.apiKey) sv('gcalApiKey', data.gcalSettings.apiKey);
+      // Update the input fields if they're visible
+      var gid = document.getElementById('gcal-id');
+      var gkey = document.getElementById('gcal-apikey');
+      if (gid && !gid.value && data.gcalSettings.calendarId) gid.value = data.gcalSettings.calendarId;
+      if (gkey && !gkey.value && data.gcalSettings.apiKey) gkey.value = data.gcalSettings.apiKey;
+    }
     // Re-init any missing day menus
     WD.forEach(function(d) {
       if (!dayMenus[d.iso]) {
@@ -1104,6 +1520,8 @@ function loadFromServer() {
         if (!dayData[d.iso].votes[m.id]) dayData[d.iso].votes[m.id] = {voters: []};
       });
     });
+    // Apply every-other-week away for Ace, Tyler, Aaliyah
+    applyEveryOtherWeekAway();
     // Also save to localStorage as cache
     saveAll();
     if (loaded) {
@@ -1200,6 +1618,8 @@ loadFromServer().then(function(loaded) {
   if (loaded) {
     document.getElementById('stxt').textContent='Synced \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
   }
+  // Auto-sync Google Calendar after server data is loaded
+  autoSyncCalendar();
 });
 startAutoRefresh();
 </script>
