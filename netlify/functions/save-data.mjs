@@ -44,6 +44,9 @@ export default async (req) => {
     if (data.gcalSettings !== undefined) {
       saves.push(store.setJSON('gcalSettings', data.gcalSettings))
     }
+    if (data.tgSettings !== undefined) {
+      saves.push(store.setJSON('tgSettings', data.tgSettings))
+    }
 
     await Promise.all(saves)
 
