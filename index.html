@@ -175,6 +175,17 @@ input:checked+.tsl::before{transform:translateX(20px)}
 .rall{width:100%;margin-top:.6rem;background:var(--cbg);border:1px solid var(--cb);border-radius:var(--rs);padding:10px;cursor:pointer;font-size:.82rem;color:var(--mt);font-family:'Lato',sans-serif;min-height:44px}
 .rall:active{background:#f0d9c0;color:var(--b)}
 .dbnote{font-size:.7rem;color:var(--mt);text-align:center;margin-top:5px;font-style:italic}
+.sync-bar{background:#fff3e0;border:1px solid #ffcc80;border-radius:var(--rs);padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:#e65100;text-align:center;display:none}
+.sync-bar.ok{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32}
+.sync-bar.err{background:#ffebee;border-color:#ef9a9a;color:#c62828}
+.sync-bar.show{display:block}
+.save-pub{background:linear-gradient(135deg,#2e7d32,#388e3c);color:#fff;border:none;border-radius:var(--rs);padding:14px 20px;cursor:pointer;font-size:.95rem;font-family:'Lato',sans-serif;font-weight:700;width:100%;margin:12px 0 6px;min-height:52px;letter-spacing:.3px;box-shadow:0 2px 8px rgba(46,125,50,.3)}
+.save-pub:active{background:linear-gradient(135deg,#1b5e20,#2e7d32);transform:scale(.98)}
+.save-pub:disabled{opacity:.6;cursor:not-allowed}
+.save-pub .ico{margin-right:6px}
+.refresh-bar{background:#e3f2fd;border:1px solid #90caf9;border-radius:var(--rs);padding:10px;margin-bottom:10px;text-align:center;display:none}
+.refresh-bar.show{display:block}
+.refresh-bar button{background:#1976d2;color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;cursor:pointer;font-size:.82rem;font-weight:700;min-height:40px}
 .badge{display:inline-block;background:var(--g);color:#fff;border-radius:8px;font-size:.62rem;padding:1px 6px;margin-left:4px;font-weight:700}
 .badge.r{background:#c8400a}
 .dmp-meal{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f0e8}
@@ -232,6 +243,11 @@ input:checked+.tsl::before{transform:translateX(20px)}
   </div>
   <div id="ldg" class="ldg">Loading your dinner board...</div>
   <div id="app" style="display:none">
+    <div id="sync-bar" class="sync-bar" style="max-width:600px;margin:0 auto 0;padding:8px 12px"></div>
+    <div id="refresh-bar" class="refresh-bar" style="max-width:600px;margin:0 auto">
+      <div style="font-size:.78rem;color:#1565c0;margin-bottom:6px">The menu has been updated by kitchen management</div>
+      <button onclick="loadFromServer()">Refresh to see latest menu</button>
+    </div>
     <div class="who">
       <span class="wlbl">Who are you?</span>
       <div class="wchips" id="wchips"></div>
@@ -270,6 +286,9 @@ input:checked+.tsl::before{transform:translateX(20px)}
         <div class="pwerr" id="pwerr">Incorrect password.</div>
       </div>
       <div id="msec" style="display:none">
+        <div id="admin-sync-bar" style="margin-bottom:10px"></div>
+        <button class="save-pub" id="save-pub-top" onclick="publishMenu()" style="margin-top:0;margin-bottom:12px"><span class="ico">&#10003;</span> Save &amp; Publish All Changes</button>
+        <div class="dbnote" style="margin-bottom:10px">Publishes meals, schedules, and settings for all family members</div>
         <div class="atabs">
           <div class="atab on" onclick="aTab('menu')">Menu</div>
           <div class="atab" onclick="aTab('daymenu')">Day Menus</div>
@@ -288,11 +307,14 @@ input:checked+.tsl::before{transform:translateX(20px)}
           <input class="ainp" id="nd" placeholder="Description..."/>
           <input class="ainp" id="nl" placeholder="Recipe link (optional)"/>
           <button class="ab full" onclick="addMeal()">Add Meal</button>
-          <div class="dbnote">Saves permanently to this device</div>
+          <div class="dbnote">Use "Save &amp; Publish" in Day Menus to share changes with everyone</div>
         </div>
         <div class="asec" id="asec-daymenu">
           <div class="albl">Select meals for each day &mdash; toggle on/off, mark as New</div>
+          <div id="daymenu-save-status"></div>
           <div id="day-menu-ed"></div>
+          <button class="save-pub" id="save-pub-btn" onclick="publishMenu()"><span class="ico">&#10003;</span> Save &amp; Publish Menu for Everyone</button>
+          <div class="dbnote">This saves the menu to the server so all family members can see it</div>
         </div>
         <div class="asec" id="asec-reqs">
           <div class="albl">Meal requests</div>
@@ -619,6 +641,8 @@ function vote(iso,mid){
   var v=dayData[iso].votes[mid].voters,i=v.indexOf(cUser);
   if(i>=0)v.splice(i,1);else v.push(cUser);
   rTabs();rDay();rWho();saveAll();
+  // Sync vote to server silently
+  syncToServer();
 }
 function selDay(iso){aDay=iso;rTabs(true);rDay();rWho();}
 function rAll(scrollToActive){rWho();rTabs(scrollToActive);rDay();rReqP();rSugP();if(adm)rAdm();}
@@ -632,6 +656,7 @@ function submitReq(){
   reqs.push({id:nReq++,name:n,note:note,by:by,date:new Date().toLocaleDateString(),done:false});
   ne.value='';no.value='';saveAll();rReqP();showSt('req-st','Thanks '+by+'! Your request has been noted.','ok');
   if(adm)rAdm();
+  syncToServer();
 }
 function rReqP(){
   var e=document.getElementById('req-pend');
@@ -652,6 +677,7 @@ function submitSug(){
   sugs.push({id:nSug++,name:n,desc:d,link:lnk,by:by,date:new Date().toLocaleDateString()});
   ne.value='';de.value='';le.value='';saveAll();rSugP();showSt('sug-st','Thanks '+by+'! "'+n+'" sent to the kitchen.','ok');
   if(adm)rAdm();
+  syncToServer();
 }
 function rSugP(){
   var e=document.getElementById('sug-pend');
@@ -949,18 +975,233 @@ function sendReminder(){
   });
 }
 
+// ── SERVER SYNC (Netlify Blobs) ──
+var serverVersion = 0; // Track if server data has changed
+var syncing = false;
+
+function showSync(msg, type) {
+  var el = document.getElementById('sync-bar');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sync-bar show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+  if (type === 'ok') { setTimeout(function(){ el.className = 'sync-bar'; }, 3000); }
+}
+
+function syncToServer() {
+  if (syncing) return Promise.resolve(false);
+  syncing = true;
+  // Build per-date dayData for saving (only open/votes, like saveAll does for localStorage)
+  var serverDayData = {};
+  WD.forEach(function(d) {
+    if (dayData[d.iso]) {
+      serverDayData[d.iso] = { open: dayData[d.iso].open, away: dayData[d.iso].away || [], votes: dayData[d.iso].votes };
+    }
+  });
+  return fetch('/.netlify/functions/save-data', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      meals: meals, nMeal: nMeal,
+      fam: fam, nFam: nFam,
+      dayMenus: dayMenus,
+      ings: ings,
+      reqs: reqs, nReq: nReq,
+      sugs: sugs, nSug: nSug,
+      dayData: serverDayData
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) {
+      return r.text().then(function(txt) {
+        try { return JSON.parse(txt); } catch(e) { return { error: 'Server error (' + r.status + ')' }; }
+      });
+    }
+    return r.json();
+  })
+  .then(function(data) {
+    syncing = false;
+    if (data.ok) {
+      serverVersion++;
+      showSync('\u2713 Menu published \u2014 everyone can see it now', 'ok');
+      return true;
+    } else {
+      showSync('Error saving: ' + (data.error || 'unknown'), 'err');
+      return false;
+    }
+  })
+  .catch(function(err) {
+    syncing = false;
+    console.error('syncToServer error:', err);
+    showSync('Could not reach server \u2014 changes saved locally only', 'err');
+    return false;
+  });
+}
+
+function loadFromServer() {
+  var bar = document.getElementById('sync-bar');
+  if (bar) { bar.textContent = 'Loading latest menu...'; bar.className = 'sync-bar show'; }
+  return fetch('/.netlify/functions/load-data')
+  .then(function(r) {
+    if (!r.ok) throw new Error('Server error (' + r.status + ')');
+    return r.json();
+  })
+  .then(function(data) {
+    var loaded = false;
+    // Meals
+    if (data.meals && data.meals.meals) {
+      meals = data.meals.meals.map(function(x) { return Object.assign({link: ''}, x); });
+      nMeal = data.meals.nMeal || 100;
+      loaded = true;
+    }
+    // Family
+    if (data.fam && data.fam.fam) {
+      fam = data.fam.fam;
+      nFam = data.fam.nFam || 100;
+    }
+    // Day Menus
+    if (data.dayMenus) {
+      dayMenus = data.dayMenus;
+      loaded = true;
+    }
+    // Ingredients
+    if (data.ings) {
+      ings = data.ings;
+    }
+    // Requests
+    if (data.reqs && data.reqs.reqs) {
+      reqs = data.reqs.reqs;
+      nReq = data.reqs.nReq || 1;
+    }
+    // Suggestions
+    if (data.sugs && data.sugs.sugs) {
+      sugs = data.sugs.sugs.map(function(x) { return Object.assign({link: ''}, x); });
+      nSug = data.sugs.nSug || 1;
+    }
+    // Day data (votes, schedule, away)
+    if (data.dayData) {
+      WD.forEach(function(d) {
+        if (data.dayData[d.iso]) {
+          var sd = data.dayData[d.iso];
+          dayData[d.iso].open = sd.open !== undefined ? sd.open : true;
+          dayData[d.iso].away = sd.away || [];
+          if (sd.votes) {
+            meals.forEach(function(m) {
+              dayData[d.iso].votes[m.id] = sd.votes[m.id] ? sd.votes[m.id] : {voters: []};
+            });
+          }
+        }
+      });
+    }
+    // Re-init any missing day menus
+    WD.forEach(function(d) {
+      if (!dayMenus[d.iso]) {
+        dayMenus[d.iso] = {mealIds: meals.map(function(m) { return m.id; }), newMealIds: []};
+      } else {
+        if (!dayMenus[d.iso].newMealIds) dayMenus[d.iso].newMealIds = [];
+      }
+      // Make sure vote structures exist for all meals
+      meals.forEach(function(m) {
+        if (!dayData[d.iso].votes[m.id]) dayData[d.iso].votes[m.id] = {voters: []};
+      });
+    });
+    // Also save to localStorage as cache
+    saveAll();
+    if (loaded) {
+      showSync('\u2713 Loaded latest menu from server', 'ok');
+    }
+    // Hide refresh bar
+    var rb = document.getElementById('refresh-bar');
+    if (rb) rb.className = 'refresh-bar';
+    rAll(true);
+    return loaded;
+  })
+  .catch(function(err) {
+    if (bar) { bar.textContent = ''; bar.className = 'sync-bar'; }
+    // Silently fall back to localStorage
+    return false;
+  });
+}
+
+function publishMenu() {
+  var btn = document.getElementById('save-pub-btn');
+  var btn2 = document.getElementById('save-pub-top');
+  var st = document.getElementById('daymenu-save-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ico">&#8987;</span> Saving...'; }
+  if (btn2) { btn2.disabled = true; btn2.innerHTML = '<span class="ico">&#8987;</span> Saving...'; }
+  // Save to localStorage first
+  saveAll();
+  // Reset syncing flag to ensure this explicit save goes through
+  syncing = false;
+  // Then push to server with retry
+  function attempt(retries) {
+    return syncToServer().then(function(ok) {
+      if (!ok && retries > 0) {
+        return new Promise(function(resolve) { setTimeout(resolve, 1500); }).then(function() {
+          syncing = false;
+          return attempt(retries - 1);
+        });
+      }
+      return ok;
+    });
+  }
+  attempt(2).then(function(ok) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span class="ico">&#10003;</span> Save &amp; Publish Menu for Everyone'; }
+    if (btn2) { btn2.disabled = false; btn2.innerHTML = '<span class="ico">&#10003;</span> Save &amp; Publish All Changes'; }
+    if (st) {
+      if (ok) {
+        st.innerHTML = '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:8px;text-align:center;font-size:.82rem;color:#2e7d32;margin-bottom:8px">\u2713 Menu saved and published! All family members will see the updated menu.</div>';
+      } else {
+        st.innerHTML = '<div style="background:#ffebee;border:1px solid #ef9a9a;border-radius:6px;padding:8px;text-align:center;font-size:.82rem;color:#c62828;margin-bottom:8px">Could not save to server \u2014 changes saved locally. Try again.</div>';
+      }
+      setTimeout(function(){ if (st) st.innerHTML = ''; }, 8000);
+    }
+  });
+}
+
+// Auto-refresh for non-admin users: periodically check for updates
+var refreshTimer = null;
+function startAutoRefresh() {
+  if (refreshTimer) return;
+  refreshTimer = setInterval(function() {
+    if (adm) return; // Admin is managing, don't interrupt
+    fetch('/.netlify/functions/load-data')
+    .then(function(r) {
+      if (!r.ok) throw new Error('Server error');
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data.dayMenus) return;
+      // Compare server dayMenus with local to detect changes
+      var serverStr = JSON.stringify(data.dayMenus);
+      var localStr = JSON.stringify(dayMenus);
+      if (serverStr !== localStr) {
+        var rb = document.getElementById('refresh-bar');
+        if (rb) rb.className = 'refresh-bar show';
+      }
+    })
+    .catch(function(){}); // Silently ignore errors
+  }, 60000); // Check every 60 seconds
+}
+
 // ── EVENT LISTENERS ──
 document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')doUnlock();});
 document.getElementById('sug-name').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('sug-desc').focus();});
 document.getElementById('req-name').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('req-note').focus();});
 
 // ── BOOT ──
-loadAll();
+loadAll(); // Load from localStorage first as cache
 document.getElementById('ldg').style.display='none';
 document.getElementById('app').style.display='block';
 document.getElementById('stxt').textContent='Ready \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
 document.getElementById('dot').classList.add('ok');
 rAll(true);
+// Then load from server for the latest data (non-blocking)
+loadFromServer().then(function(loaded) {
+  if (loaded) {
+    document.getElementById('stxt').textContent='Synced \u2013 '+WD[0].month+' '+WD[0].date+' to '+WD[13].month+' '+WD[13].date;
+  }
+});
+startAutoRefresh();
 </script>
 </body>
 </html>
