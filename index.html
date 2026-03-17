@@ -523,6 +523,8 @@ function loadAll(){
       if(!dayMenus[d.iso].newMealIds)dayMenus[d.iso].newMealIds=[];
     }
   });
+  // Apply every-other-week away for Ace, Tyler, Aaliyah
+  applyEveryOtherWeekAway();
   // Purge stale day storage (older than 20 days)
   var cutoff=new Date(today);
   cutoff.setDate(cutoff.getDate()-20);
@@ -536,6 +538,51 @@ function loadAll(){
 }
 
 function flash(){var e=document.getElementById('sv');e.classList.add('show');setTimeout(function(){e.classList.remove('show');},1500);}
+
+// ── EVERY-OTHER-WEEK AWAY ──
+// Ace, Tyler, Aaliyah are gone every other week starting Mon Mar 23, 2026
+// Away weeks: Mar 23–29, Apr 6–12, Apr 20–26, etc.
+// Back weeks: Mar 30–Apr 5, Apr 13–19, etc.
+var EOW_AWAY_IDS = [1, 6, 8]; // Aaliyah=1, Tyler=6, Ace=8
+var EOW_REF_MONDAY = new Date(2026, 2, 23); // March 23, 2026 (first away week Monday)
+EOW_REF_MONDAY.setHours(0,0,0,0);
+
+function isEveryOtherWeekAway(iso) {
+  var d = new Date(iso + 'T12:00:00'); // noon to avoid timezone edge cases
+  // Find the Monday of this date's week (Mon=1, Sun=0→treat as 7)
+  var dow = d.getDay(); // 0=Sun
+  var diffToMon = (dow === 0) ? -6 : 1 - dow; // days to subtract to get Monday
+  var monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMon);
+  monday.setHours(0,0,0,0);
+  // Calculate weeks between this Monday and the reference Monday
+  var diffMs = monday.getTime() - EOW_REF_MONDAY.getTime();
+  var diffWeeks = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+  // Even weeks (0, 2, 4...) from reference = away; odd = home
+  return (diffWeeks % 2 === 0) && diffWeeks >= 0;
+}
+
+function applyEveryOtherWeekAway() {
+  WD.forEach(function(d) {
+    if (!dayData[d.iso]) dayData[d.iso] = {open: true, away: [], votes: {}};
+    if (isEveryOtherWeekAway(d.iso)) {
+      EOW_AWAY_IDS.forEach(function(id) {
+        if (!dayData[d.iso].away.includes(id)) {
+          dayData[d.iso].away.push(id);
+          // Remove any votes from members who are now away
+          var m = fam.find(function(x) { return x.id === id; });
+          if (m) {
+            meals.forEach(function(ml) {
+              if (dayData[d.iso].votes[ml.id]) {
+                dayData[d.iso].votes[ml.id].voters = dayData[d.iso].votes[ml.id].voters.filter(function(n) { return n !== m.name; });
+              }
+            });
+          }
+        }
+      });
+    }
+  });
+}
 
 // ── HELPERS ──
 function cu(s){if(!s)return'';var t=s.trim();return t.startsWith('http')?t:'https://'+t;}
@@ -565,7 +612,15 @@ function rWho(){
     c.innerHTML+='<button class="wc'+(ia2?' on':'')+(ia?' aw':'')+'" onclick="'+(ia?'':'setU(\''+m.name+'\')')+'">'+m.name+'</button>';
   });
   var an=fam.filter(function(m){return aw.includes(m.id);}).map(function(m){return m.name;});
-  if(an.length){n.style.display='block';n.textContent=an.join(', ')+(an.length===1?' is':' are')+' working 4pm\u201311:59pm \u2014 excluded from voting';}
+  if(an.length){
+    // Separate EOW away from work away
+    var eowNames=fam.filter(function(m){return aw.includes(m.id)&&EOW_AWAY_IDS.includes(m.id)&&isEveryOtherWeekAway(aDay);}).map(function(m){return m.name;});
+    var workNames=an.filter(function(n){return eowNames.indexOf(n)<0;});
+    var parts=[];
+    if(eowNames.length)parts.push(eowNames.join(', ')+(eowNames.length===1?' is':' are')+' gone this week \u2014 excluded from voting');
+    if(workNames.length)parts.push(workNames.join(', ')+(workNames.length===1?' is':' are')+' working 4pm\u201311:59pm \u2014 excluded from voting');
+    n.style.display='block';n.textContent=parts.join(' \u00B7 ');
+  }
   else n.style.display='none';
 }
 function setU(n){cUser=cUser===n?null:n;rWho();rDay();}
@@ -629,7 +684,13 @@ function rDay(){
     +'</div>'
     +'<div class="stitle"><span>Choose Your Dinner</span></div>';
   if(!cUser)h+='<div class="novote">Tap your name above to cast your vote</div>';
-  else if(ua)h+='<div class="workmsg">'+cUser+' is working 4pm\u201311:59pm \u2014 no vote needed!</div>';
+  else if(ua){
+    var um=fam.find(function(x){return x.name===cUser;});
+    if(um&&EOW_AWAY_IDS.includes(um.id)&&isEveryOtherWeekAway(aDay))
+      h+='<div class="workmsg">'+cUser+' is gone this week \u2014 no vote needed!</div>';
+    else
+      h+='<div class="workmsg">'+cUser+' is working 4pm\u201311:59pm \u2014 no vote needed!</div>';
+  }
   if(dm.length===0){
     h+='<div class="nomeals">No meals set for '+d.dayName+' '+d.month+' '+d.date+' yet \u2014 check back soon!</div>';
   } else {
@@ -928,6 +989,11 @@ function delFam(id){var m=fam.find(function(m){return m.id===id;});if(m&&m.name=
 function togDay(iso,open){if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};dayData[iso].open=open;rAll();saveAll();syncToServer();}
 function togAway(iso,famId){
   if(!dayData[iso])dayData[iso]={open:true,away:[],votes:{}};
+  // Prevent un-blocking every-other-week members during their away week
+  if(EOW_AWAY_IDS.includes(famId)&&isEveryOtherWeekAway(iso)){
+    var alreadyAway=dayData[iso].away.indexOf(famId)>=0;
+    if(alreadyAway)return; // can't toggle off during away week
+  }
   var aw=dayData[iso].away,i=aw.indexOf(famId);
   if(i>=0)aw.splice(i,1);else aw.push(famId);
   // Remove votes from members who are now away
@@ -1187,6 +1253,8 @@ function applyCalendarEvents(events){
       }
     });
   });
+  // Also re-apply every-other-week away after calendar events
+  applyEveryOtherWeekAway();
   saveAll();rAll();syncToServer();
   return matched;
 }
@@ -1452,6 +1520,8 @@ function loadFromServer() {
         if (!dayData[d.iso].votes[m.id]) dayData[d.iso].votes[m.id] = {voters: []};
       });
     });
+    // Apply every-other-week away for Ace, Tyler, Aaliyah
+    applyEveryOtherWeekAway();
     // Also save to localStorage as cache
     saveAll();
     if (loaded) {
