@@ -367,7 +367,7 @@ input:checked+.tsl::before{transform:translateX(20px)}
         <div class="asec" id="asec-gcal">
           <div class="albl">Google Calendar Integration</div>
           <div style="font-size:.8rem;color:var(--br);margin-bottom:.75rem;line-height:1.5">
-            Connect a Google Calendar to automatically block family members from voting when they have work shifts scheduled between <strong>4:00 PM and 11:59 PM</strong>.
+            Connect a Google Calendar to automatically block family members from voting when they have work shifts that overlap with <strong>5:00 PM or later</strong>.
           </div>
           <div class="albl">Google Calendar ID</div>
           <input class="ainp" id="gcal-id" placeholder="e.g. your-calendar@group.calendar.google.com"/>
@@ -381,8 +381,8 @@ input:checked+.tsl::before{transform:translateX(20px)}
           </div>
           <div class="albl">Keyword Matching</div>
           <div style="font-size:.8rem;color:var(--br);margin-bottom:.75rem;line-height:1.5">
-            <strong>Shared calendar:</strong> Events are matched to family members using their <strong>work keyword</strong> or <strong>name</strong> (set in the Family tab). If an event title contains a member's keyword or name and falls between 4 PM &ndash; 11:59 PM, that member is automatically marked as working.<br>
-            <strong>Personal calendars:</strong> You can also set a Google Calendar ID per member in the Family tab. Any event on their personal calendar during 4&ndash;11:59 PM will automatically block them &mdash; no keyword matching needed.
+            <strong>Shared calendar:</strong> Events are matched to family members using their <strong>work keyword</strong> or <strong>name</strong> (set in the Family tab). If an event title contains a member's name and the word &quot;work&quot;, and the shift extends past 5 PM, that member is automatically marked as working.<br>
+            <strong>Personal calendars:</strong> You can also set a Google Calendar ID per member in the Family tab. Any event on their personal calendar that extends past 5 PM will automatically block them &mdash; no keyword matching needed.
           </div>
           <button class="ab full" onclick="saveGcalSettings()" style="margin-bottom:8px">Save Calendar Settings</button>
           <button class="ab full" style="background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32" onclick="syncGoogleCalendar()" id="gcal-sync-btn">Sync from Google Calendar now</button>
@@ -1122,7 +1122,7 @@ function syncGoogleCalendar(){
 function applyCalendarEvents(events){
   var matched=0;
   // For each day in the 14-day window, check if any "[name] work" events
-  // have a start time between 5PM-11:59PM and block that family member
+  // overlap with 5PM+ (end time >= 17:00) and block that family member
   WD.forEach(function(d){
     if(!dayData[d.iso])dayData[d.iso]={open:true,away:[],votes:{}};
     var calAway=[];
@@ -1137,23 +1137,23 @@ function applyCalendarEvents(events){
       var evDateStr=evStart.getFullYear()+'-'+String(evStart.getMonth()+1).padStart(2,'0')+'-'+String(evStart.getDate()).padStart(2,'0');
       // For all-day events (date-only strings without 'T'), check if the date matches
       var isAllDay=typeof ev.start==='string'&&ev.start.indexOf('T')<0;
-      // Only match events where start time is between 5PM and 11:59PM
+      // Only match work events that overlap with the dinner window (5PM+)
       var evOnThisDay=false;
-      var startInWindow=false;
+      var overlapsWindow=false;
       if(isAllDay){
-        // All-day events: skip (they don't have a specific start time in the work window)
+        // All-day events: skip (they don't have a specific time)
         evOnThisDay=false;
       } else {
         // Check if event falls on this day
         evOnThisDay=(evDateStr===d.iso);
-        // Check if event START time is between 5PM (17:00) and 11:59PM (23:59)
+        // Check if the event OVERLAPS with 5PM+ (i.e., ends after 5PM)
         if(evOnThisDay){
-          var startHour=evStart.getHours();
-          var startMin=evStart.getMinutes();
-          startInWindow=(startHour>=17); // 5PM or later
+          var endHour=evEnd.getHours();
+          var endMin=evEnd.getMinutes();
+          overlapsWindow=(endHour>=17||(endHour===0&&endMin===0)); // ends at or after 5PM (midnight = next day boundary also counts)
         }
       }
-      if(evOnThisDay&&startInWindow){
+      if(evOnThisDay&&overlapsWindow){
         // Only match events where title contains BOTH the person's name AND the word "work"
         var title=(ev.summary||'').toLowerCase().trim();
         var hasWork=title.indexOf('work')>=0;
@@ -1238,18 +1238,21 @@ function showCalendarPreview(events){
         endTime=ed.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
       }
       var timeStr=startTime?(startTime+(endTime?' \u2013 '+endTime:'')):'All day';
-      // Check if it matched any member (only name + "work" in title with start time 5PM-11:59PM)
+      // Check if it matched any member (name + "work" in title, event overlaps 5PM+)
       var matchedNames=[];
       var title=(ev.summary||'').toLowerCase().trim();
       var hasWork=title.indexOf('work')>=0;
-      // Check if event start time is between 5PM and 11:59PM
+      // Check if event end time extends past 5PM (overlaps with dinner window)
       var evStartForPreview=ev.start&&ev.start.indexOf('T')>=0?new Date(ev.start):null;
-      var startInWindowPreview=false;
-      if(evStartForPreview&&!isNaN(evStartForPreview.getTime())){
-        var previewHour=evStartForPreview.getHours();
-        startInWindowPreview=(previewHour>=17);
+      var evEndForPreview=ev.end&&ev.end.indexOf('T')>=0?new Date(ev.end):null;
+      if(!evEndForPreview&&evStartForPreview)evEndForPreview=new Date(evStartForPreview.getTime()+3600000);
+      var overlapsWindowPreview=false;
+      if(evEndForPreview&&!isNaN(evEndForPreview.getTime())){
+        var previewEndHour=evEndForPreview.getHours();
+        var previewEndMin=evEndForPreview.getMinutes();
+        overlapsWindowPreview=(previewEndHour>=17||(previewEndHour===0&&previewEndMin===0));
       }
-      if(hasWork&&startInWindowPreview){
+      if(hasWork&&overlapsWindowPreview){
         fam.forEach(function(m){
           var nameLower=m.name.toLowerCase().trim();
           var nameInTitle=nameLower&&title.indexOf(nameLower)>=0;
