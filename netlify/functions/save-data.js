@@ -1,8 +1,18 @@
 const { getStore } = require('@netlify/blobs');
 
+const headers = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 exports.handler = async function(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers, body: '' };
+  }
+
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
@@ -38,12 +48,14 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({ ok: true })
     };
   } catch (err) {
     console.error('Save error:', err);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'Failed to save: ' + err.message })
     };
   }
