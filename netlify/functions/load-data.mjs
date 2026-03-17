@@ -17,7 +17,7 @@ export default async (req) => {
   try {
     const store = getStore({ name: 'dinner-board', consistency: 'strong' })
 
-    const [meals, fam, dayMenus, ings, reqs, sugs, dayData, gcalSettings] = await Promise.all([
+    const [meals, fam, dayMenus, ings, reqs, sugs, dayData, gcalSettings, tgSettings] = await Promise.all([
       store.get('meals', { type: 'json' }).catch(() => null),
       store.get('fam', { type: 'json' }).catch(() => null),
       store.get('dayMenus', { type: 'json' }).catch(() => null),
@@ -26,10 +26,11 @@ export default async (req) => {
       store.get('sugs', { type: 'json' }).catch(() => null),
       store.get('dayData', { type: 'json' }).catch(() => null),
       store.get('gcalSettings', { type: 'json' }).catch(() => null),
+      store.get('tgSettings', { type: 'json' }).catch(() => null),
     ])
 
     return Response.json({
-      meals, fam, dayMenus, ings, reqs, sugs, dayData, gcalSettings,
+      meals, fam, dayMenus, ings, reqs, sugs, dayData, gcalSettings, tgSettings,
     }, { headers: corsHeaders })
   } catch (err) {
     console.error('Load error:', err)

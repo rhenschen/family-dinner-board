@@ -1014,6 +1014,12 @@ function saveTgChatId(id){
   sv('tgChatId',id);
   var el=document.getElementById('tg-chatid');
   if(el)el.value=id;
+  // Also save to server for scheduled reminders
+  fetch('/.netlify/functions/save-data',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tgSettings:{chatId:id}})
+  }).catch(function(){});
 }
 function loadTgSetup(){
   var el=document.getElementById('tg-chatid');
@@ -1413,7 +1419,8 @@ function syncToServer() {
       reqs: reqs, nReq: nReq,
       sugs: sugs, nSug: nSug,
       dayData: serverDayData,
-      gcalSettings: {calendarId: ld('gcalId',''), apiKey: ld('gcalApiKey','')}
+      gcalSettings: {calendarId: ld('gcalId',''), apiKey: ld('gcalApiKey','')},
+      tgSettings: {chatId: ld('tgChatId','')}
     })
   })
   .then(function(r) {
@@ -1507,6 +1514,12 @@ function loadFromServer() {
       var gkey = document.getElementById('gcal-apikey');
       if (gid && !gid.value && data.gcalSettings.calendarId) gid.value = data.gcalSettings.calendarId;
       if (gkey && !gkey.value && data.gcalSettings.apiKey) gkey.value = data.gcalSettings.apiKey;
+    }
+    // Telegram settings (shared across all devices)
+    if (data.tgSettings && data.tgSettings.chatId) {
+      sv('tgChatId', data.tgSettings.chatId);
+      var tgEl = document.getElementById('tg-chatid');
+      if (tgEl && !tgEl.value) tgEl.value = data.tgSettings.chatId;
     }
     // Re-init any missing day menus
     WD.forEach(function(d) {
