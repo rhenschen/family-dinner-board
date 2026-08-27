@@ -1,5 +1,5 @@
-import { getStore } from '@netlify/blobs'
 import https from 'https'
+import { readBoard, importLegacyBlobsIfNeeded } from '../../db/board.js'
 
 function telegramRequest(method, token, body) {
   return new Promise(function (resolve, reject) {
@@ -53,18 +53,20 @@ export default async (req) => {
     return
   }
 
-  var store = getStore({ name: 'dinner-board', consistency: 'strong' })
+  try {
+    await importLegacyBlobsIfNeeded()
+  } catch (err) {
+    console.error('Legacy blobs import skipped:', err.message)
+  }
 
-  // Load all needed data from Netlify Blobs
-  var [famData, dayDataAll, dayMenusData, mealsData, tgSettings] = await Promise.all([
-    store.get('fam', { type: 'json' }).catch(() => null),
-    store.get('dayData', { type: 'json' }).catch(() => null),
-    store.get('dayMenus', { type: 'json' }).catch(() => null),
-    store.get('meals', { type: 'json' }).catch(() => null),
-    store.get('tgSettings', { type: 'json' }).catch(() => null),
-  ])
+  // Load all needed data from the database
+  var board = await readBoard()
+  var famData = board.fam
+  var dayDataAll = board.dayData
+  var dayMenusData = board.dayMenus
+  var mealsData = board.meals
+  var tgSettings = board.tgSettings
 
-  // Get Telegram chat ID from Blobs
   var chatId = tgSettings && tgSettings.chatId
   if (!chatId) {
     console.log('No Telegram Chat ID configured in server storage, skipping reminder')
