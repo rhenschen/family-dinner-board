@@ -5,9 +5,14 @@
   "private": true,
   "dependencies": {
     "@netlify/blobs": "^10.7.2",
-    "axios": "^1.13.6"
+    "@netlify/database": "^2.0.0",
+    "axios": "^1.13.6",
+    "drizzle-orm": "^1.0.0-beta.22"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^1.0.0-beta.22"
   }
 }
